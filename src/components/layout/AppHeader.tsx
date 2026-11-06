@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { APP_SUBTITLE } from '@shared/branding'
 import type { Settings } from '@shared/types'
-import type { AuthUser } from '../../api/types'
+import type { AuthContextUser } from '../../auth/AuthContext'
 import { useCooperatives } from '../../context/CooperativeContext'
 import { formatMonthYear } from '../../utils/format'
 import { IconBuilding } from '../ui/icons'
@@ -10,7 +10,7 @@ import { IconBuilding } from '../ui/icons'
 interface AppHeaderProps {
   settings: Settings | null
   pageTitle: string
-  user: AuthUser
+  user: AuthContextUser
   onLogout: () => void
 }
 

@@ -5,6 +5,7 @@ export type AuthUser = {
   email: string
   fullName: string
   isActive: boolean
+  has_security_question?: boolean
 }
 
 export type AuthMembership = {

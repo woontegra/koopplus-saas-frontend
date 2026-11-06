@@ -32,12 +32,6 @@ export default function AppLayout(): JSX.Element {
     reloadSettings()
   }, [reloadSettings, dataEpoch])
 
-  // Giriş sonrası shell hazır → main'e bildir (yedek tetik; did-finish-load da planlar)
-  useEffect(() => {
-    if (!user) return
-    void window.api?.update?.rendererReady?.().catch(() => undefined)
-  }, [user])
-
   const pageTitle = getPageTitle(location.pathname)
   useProtectNativeTyping()
 

@@ -1,7 +1,5 @@
-import type { ActivePeriod, Settings } from '@shared/types'
 import { partnersDesktopApi } from './partnersDesktopApi'
 import {
-  backupDesktopApi,
   documentsDesktopApi,
   memberDebtTableDesktopApi,
   memberExtraDebtsDesktopApi,
@@ -11,48 +9,24 @@ import { interestDesktopApi, interestPoliciesDesktopApi } from './interestDeskto
 import { aidatDistributionDesktopApi } from './aidatDistributionDesktopApi'
 import { cashDesktopApi } from './cashDesktopApi'
 import { bankDesktopApi } from './bankDesktopApi'
+import { libraryDesktopApi } from './libraryDesktopApi'
+import { dashboardDesktopApi } from './dashboardDesktopApi'
+import { settingsDesktopApi } from './settingsDesktopApi'
+import { usersDesktopApi } from './usersDesktopApi'
+import { cooperativesDesktopApi } from './cooperativesDesktopApi'
+import { backupDesktopApi } from './backupDesktopApi'
+import { authDesktopApi } from './authDesktopApi'
 
-type ApiResult<T = void> = { success: boolean; data?: T; error?: string }
-
-function notPorted(name: string): () => Promise<ApiResult<never>> {
-  return async () => ({
-    success: false,
-    error: `${name} henüz SaaS API katmanında yok.`
+/** Güncelleme/lisans SaaS'ta yok — yalnızca preload uyumluluğu için no-op. */
+const updateDesktopApi = {
+  rendererReady: async (): Promise<{ success: boolean; data?: boolean; error?: string }> => ({
+    success: true,
+    data: true
   })
 }
 
-/** AppLayout/Header/Footer için SaaS ayar kabuğu — kooperatif adı CooperativeSwitcher'dan gelir. */
-async function getSettings(): Promise<ApiResult<Settings>> {
-  const now = new Date()
-  return {
-    success: true,
-    data: {
-      cooperative_name: '',
-      cooperative_address: '',
-      cooperative_phone: '',
-      cooperative_email: '',
-      authorized_person: '',
-      cooperative_city: '',
-      cooperative_district: '',
-      cooperative_tax_id: '',
-      cooperative_description: '',
-      default_monthly_dues: '',
-      last_payment_day: '',
-      default_accrual_description: '',
-      active_period_month: String(now.getMonth() + 1),
-      active_period_year: String(now.getFullYear()),
-      backup_folder: '',
-      last_backup_date: '',
-      last_backup_file: '',
-      monthly_interest_rate: '',
-      use_end_of_month_due: ''
-    }
-  }
-}
-
 /**
- * Masaüstü preload `window.api` yüzeyi.
- * Üyeler + Üye Borç Tablosu namespace'leri bağlı; diğerleri güvenli stub.
+ * Masaüstü preload `window.api` yüzeyi — SaaS REST santrali.
  */
 export function installWindowApi(): void {
   if (typeof window === 'undefined') return
@@ -68,27 +42,14 @@ export function installWindowApi(): void {
     bank: bankDesktopApi,
     reports: reportsDesktopApi,
     documents: documentsDesktopApi,
+    library: libraryDesktopApi,
+    dashboard: dashboardDesktopApi,
+    settings: settingsDesktopApi,
+    users: usersDesktopApi,
+    cooperatives: cooperativesDesktopApi,
     backup: backupDesktopApi,
-    settings: {
-      get: getSettings,
-      getActivePeriod: async (): Promise<ApiResult<ActivePeriod>> => {
-        const res = await getSettings()
-        if (!res.success || !res.data) return { success: false, error: res.error }
-        const year = Number(res.data.active_period_year) || new Date().getFullYear()
-        const month = Number(res.data.active_period_month) || new Date().getMonth() + 1
-        return { success: true, data: { year, month } }
-      }
-    },
-    update: {
-      rendererReady: async (): Promise<ApiResult<void>> => ({ success: true })
-    },
-    auth: {
-      hasUsers: notPorted('auth.hasUsers'),
-      createInitialAdmin: notPorted('auth.createInitialAdmin'),
-      login: notPorted('auth.login'),
-      logout: notPorted('auth.logout'),
-      getSession: notPorted('auth.getSession')
-    }
+    auth: authDesktopApi,
+    update: updateDesktopApi
   }
 
   Object.defineProperty(window, 'api', {
@@ -111,21 +72,14 @@ declare global {
       bank: typeof bankDesktopApi
       reports: typeof reportsDesktopApi
       documents: typeof documentsDesktopApi
+      library: typeof libraryDesktopApi
+      dashboard: typeof dashboardDesktopApi
+      settings: typeof settingsDesktopApi
+      users: typeof usersDesktopApi
+      cooperatives: typeof cooperativesDesktopApi
       backup: typeof backupDesktopApi
-      settings: {
-        get: () => Promise<ApiResult<Settings>>
-        getActivePeriod: () => Promise<ApiResult<ActivePeriod>>
-      }
-      update: {
-        rendererReady: () => Promise<ApiResult<void>>
-      }
-      auth: {
-        hasUsers: () => Promise<ApiResult<boolean>>
-        createInitialAdmin: (payload: unknown) => Promise<ApiResult<unknown>>
-        login: (username: string, password: string) => Promise<ApiResult<unknown>>
-        logout: () => Promise<ApiResult<void>>
-        getSession: () => Promise<ApiResult<unknown>>
-      }
+      auth: typeof authDesktopApi
+      update: typeof updateDesktopApi
     }
   }
 }

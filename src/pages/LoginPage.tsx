@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
+import ForgotPasswordModal from '../components/auth/ForgotPasswordModal'
 import {
   IconCash,
   IconChart,
@@ -43,6 +44,7 @@ export default function LoginPage(): JSX.Element {
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [showForgotModal, setShowForgotModal] = useState(false)
 
   useEffect(() => {
     if (rememberedEmail) {
@@ -198,6 +200,13 @@ export default function LoginPage(): JSX.Element {
                 />
                 Beni hatırla
               </label>
+              <button
+                type="button"
+                className="login-card__forgot"
+                onClick={() => setShowForgotModal(true)}
+              >
+                Şifremi Unuttum
+              </button>
             </div>
 
             <button className="login-card__submit" type="submit" disabled={submitting}>
@@ -206,6 +215,8 @@ export default function LoginPage(): JSX.Element {
           </form>
         </section>
       </div>
+
+      {showForgotModal && <ForgotPasswordModal onClose={() => setShowForgotModal(false)} />}
     </div>
   )
 }

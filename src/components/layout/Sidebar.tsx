@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { getNavGroupsForRole } from '../../config/navigation'
-import { useLicense } from '../../context/LicenseContext'
 import { roleLabel, useAuth } from '../../auth/AuthContext'
 import { IconLogout, NavIcon } from '../ui/icons'
 import BrandLogo from './BrandLogo'
@@ -9,7 +8,6 @@ import { useAskDialog } from '../../hooks/useAskDialog'
 
 export default function Sidebar(): JSX.Element {
   const { user, logout } = useAuth()
-  const { state } = useLicense()
   const ask = useAskDialog()
   const groups = getNavGroupsForRole(user?.role)
   const [loggingOut, setLoggingOut] = useState(false)
@@ -72,17 +70,6 @@ export default function Sidebar(): JSX.Element {
             <div className="sidebar__user-meta">
               <div className="sidebar__user-name">{user.full_name}</div>
               <div className="sidebar__user-role">{roleLabel(user.role)}</div>
-              {state.daysRemaining != null && (state.kind === 'trial' || state.kind === 'paid') && (
-                <div className="sidebar__license-badge" title={
-                  state.kind === 'trial'
-                    ? `Deneme · ${state.daysRemaining} gün`
-                    : `Lisans · ${state.daysRemaining} gün`
-                }>
-                  {state.kind === 'trial'
-                    ? `Deneme · ${state.daysRemaining} gün`
-                    : `Lisans · ${state.daysRemaining} gün`}
-                </div>
-              )}
             </div>
           </div>
           <button

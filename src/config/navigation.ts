@@ -121,6 +121,7 @@ const simplifiedNavGroups: NavGroup[] = [
         path: '/yedekleme',
         label: 'Yedekleme',
         description: 'Veritabanı yedekle / geri yükle',
+        adminOnly: true,
         icon: 'save'
       }
     ]
@@ -211,6 +212,7 @@ const fullNavGroups: NavGroup[] = [
         path: '/yedekleme',
         label: 'Yedekleme',
         description: 'Veritabanı yedekle / geri yükle',
+        adminOnly: true,
         icon: 'save'
       }
     ]

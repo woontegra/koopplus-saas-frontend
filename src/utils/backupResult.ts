@@ -18,20 +18,12 @@ export function describeBackupCreateResult(data: BackupCreateResult): {
     return {
       kind: 'ok',
       title: 'Yedekleme tamamlandı',
-      message: 'Kooperatif veritabanı ve boş doküman arşivi oluşturuldu.'
-    }
-  }
-  if (data.documents_archive_status === 'created') {
-    const count = data.documents_file_count ?? 0
-    return {
-      kind: 'ok',
-      title: 'Yedekleme tamamlandı',
-      message: `Kooperatif veritabanı ve ${count} doküman arşivlendi.`
+      message: 'Veritabanı yedeği alındı. Doküman arşivi boştu.'
     }
   }
   return {
     kind: 'ok',
     title: 'Yedekleme tamamlandı',
-    message: 'Kooperatif yedeği başarıyla oluşturuldu.'
+    message: 'Veritabanı ve doküman arşivi başarıyla indirildi.'
   }
 }

@@ -26,6 +26,7 @@ import {
 export type AuthContextUser = AuthUser & {
   full_name: string
   role: MembershipRole
+  has_security_question: boolean
 }
 
 /** Masaüstü ile aynı rol etiketleri. */
@@ -52,13 +53,13 @@ type AuthContextValue = {
   activeMembership: AuthMembership | null
   activeRole: MembershipRole | null
   rememberedEmail: string | null
-  /** Masaüstü uyumluluğu: ADMIN | STAFF yazabilir */
   canWrite: boolean
-  /** Masaüstü uyumluluğu: yalnızca ADMIN */
   isAdmin: boolean
   canManageInterest: boolean
   canManageUsers: boolean
   retryBootstrap: () => Promise<void>
+  /** meRequest + güvenlik durumu — PasswordSection / kooperatif oluşturma sonrası. */
+  refreshSession: () => Promise<void>
   login: (email: string, password: string, remember: boolean) => Promise<void>
   logout: () => Promise<void>
   selectTenant: (tenantId: string) => void
@@ -87,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   const [user, setUser] = useState<AuthUser | null>(null)
   const [memberships, setMemberships] = useState<AuthMembership[]>([])
   const [tenantId, setTenantId] = useState<string | null>(null)
+  const [hasSecurityQuestion, setHasSecurityQuestion] = useState(true)
   const [rememberedEmail, setRememberedEmail] = useState<string | null>(loadRememberedEmail())
 
   const applySession = useCallback((nextToken: string, nextUser: AuthUser, nextMemberships: AuthMembership[]) => {
@@ -110,6 +112,18 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     setUser(null)
     setMemberships([])
     setTenantId(null)
+    setHasSecurityQuestion(true)
+  }, [])
+
+  const loadSecurityStatus = useCallback(async (): Promise<void> => {
+    try {
+      const res = await window.api?.auth?.getOwnSecurityStatus?.()
+      if (res?.success && res.data) {
+        setHasSecurityQuestion(Boolean(res.data.has_security_question))
+      }
+    } catch {
+      /* backend hazır değilse uyarı gösterme */
+    }
   }, [])
 
   const bootstrapSession = useCallback(async (): Promise<void> => {
@@ -125,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     try {
       const me = await meRequest(existing)
       applySession(existing, me.user, me.memberships)
+      await loadSecurityStatus()
     } catch (error) {
       if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
         resetSession()
@@ -140,16 +155,31 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     } finally {
       setReady(true)
     }
-  }, [applySession, resetSession])
+  }, [applySession, loadSecurityStatus, resetSession])
 
   useEffect(() => {
     void bootstrapSession()
   }, [bootstrapSession])
 
+  const refreshSession = useCallback(async (): Promise<void> => {
+    const existing = token ?? loadToken()
+    if (!existing) return
+    try {
+      const me = await meRequest(existing)
+      applySession(existing, me.user, me.memberships)
+      await loadSecurityStatus()
+    } catch (error) {
+      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+        resetSession()
+      }
+    }
+  }, [applySession, loadSecurityStatus, resetSession, token])
+
   const login = useCallback(
     async (email: string, password: string, remember: boolean) => {
       const data = await loginRequest(email.trim(), password)
       applySession(data.token, data.user, data.memberships)
+      await loadSecurityStatus()
       if (remember) {
         saveRememberedEmail(email.trim().toLowerCase())
         setRememberedEmail(email.trim().toLowerCase())
@@ -158,7 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
         setRememberedEmail(null)
       }
     },
-    [applySession]
+    [applySession, loadSecurityStatus]
   )
 
   const logout = useCallback(async () => {
@@ -206,11 +236,11 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
         ? {
             ...user,
             full_name: user.fullName,
-            // Kooperatif seçilmemişse en kısıtlı rol (adminOnly menüler gizli kalır)
-            role: activeRole ?? 'VIEWER'
+            role: activeRole ?? 'VIEWER',
+            has_security_question: hasSecurityQuestion
           }
         : null,
-    [user, activeRole]
+    [user, activeRole, hasSecurityQuestion]
   )
 
   const value = useMemo<AuthContextValue>(
@@ -229,6 +259,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       canManageInterest: isAdmin,
       canManageUsers: isAdmin,
       retryBootstrap: bootstrapSession,
+      refreshSession,
       login,
       logout,
       selectTenant,
@@ -247,6 +278,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       isAdmin,
       rememberedEmail,
       bootstrapSession,
+      refreshSession,
       login,
       logout,
       selectTenant,

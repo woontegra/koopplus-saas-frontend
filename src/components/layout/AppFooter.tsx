@@ -1,6 +1,5 @@
 import { APP_VERSION, DEVELOPER_CREDIT } from '@shared/branding'
 import type { Settings } from '@shared/types'
-import { useUpdateStatus } from '../../context/UpdateStatusContext'
 import { formatDateTime, formatMonthYear } from '../../utils/format'
 
 interface AppFooterProps {
@@ -8,7 +7,6 @@ interface AppFooterProps {
 }
 
 export default function AppFooter({ settings }: AppFooterProps): JSX.Element {
-  const { status } = useUpdateStatus()
   const now = new Date()
   const activeMonth = Number(settings?.active_period_month) || now.getMonth() + 1
   const activeYear = Number(settings?.active_period_year) || now.getFullYear()
@@ -19,13 +17,6 @@ export default function AppFooter({ settings }: AppFooterProps): JSX.Element {
     lastBackup && lastBackup !== 'Henüz yedek alınmadı'
       ? formatDateTime(lastBackup)
       : '—'
-
-  const updateLabel =
-    status?.packaged && status.phase === 'not-available'
-      ? 'Sisteminiz güncel'
-      : status?.packaged && (status.phase === 'available' || status.phase === 'downloaded')
-        ? 'Güncelleme mevcut'
-        : null
 
   return (
     <footer className="app-footer">
@@ -39,11 +30,6 @@ export default function AppFooter({ settings }: AppFooterProps): JSX.Element {
         <span className="app-footer__backup">Son yedek: {backupLabel}</span>
       </div>
       <div className="app-footer__right">
-        {updateLabel && (
-          <span className={`app-footer__update${status?.phase === 'not-available' ? ' is-ok' : ''}`}>
-            {updateLabel}
-          </span>
-        )}
         <span className="app-footer__credit">{DEVELOPER_CREDIT}</span>
       </div>
     </footer>

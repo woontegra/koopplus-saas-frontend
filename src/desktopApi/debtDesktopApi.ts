@@ -5,7 +5,6 @@ import type {
   AccrualReportFilters,
   AccrualReportResult,
   ApiResult,
-  BackupCreateResult,
   DebtorPartnersFilters,
   DebtorPartnersReport,
   DocumentPdfResult,
@@ -628,14 +627,24 @@ export const documentsDesktopApi = {
   }): Promise<ApiResult<DocumentPdfResult>> {
     const auth = authTenant()
     if (!auth.success || !auth.data) return { success: false, error: auth.error }
+
     if (payload.all_members || payload.partner_id == null) {
-      return { success: false, error: 'Toplu üye hesap ekstresi PDF henüz desteklenmiyor.' }
+      return pdfDownload(
+        '/api/documents/member-statement-pdf',
+        {
+          all_members: true,
+          date_from: payload.date_from ?? null,
+          date_to: payload.date_to ?? null
+        },
+        'tum-uyeler-hesap-ekstresi.pdf'
+      )
     }
+
     const partner = resolvePartnerCuid(auth.data.tenantId, payload.partner_id)
     if (!partner.success || !partner.data) return { success: false, error: partner.error }
     return pdfDownload(
       '/api/documents/member-statement-pdf',
-      { ...payload, partner_id: partner.data },
+      { ...payload, partner_id: partner.data, all_members: false },
       'uye-hesap-ekstresi.pdf'
     )
   },
@@ -670,20 +679,3 @@ export const documentsDesktopApi = {
   }
 }
 
-export const backupDesktopApi = {
-  async createBackup(): Promise<ApiResult<BackupCreateResult>> {
-    const res = await downloadViaApi('/api/debt/backup', {
-      method: 'GET',
-      fallbackName: 'koopplus-tenant-backup.json'
-    })
-    if (!res.success || !res.data) return { success: false, error: res.error }
-    return {
-      success: true,
-      data: {
-        file_path: res.data.file_path,
-        file_size: 0,
-        documents_archive_status: 'empty'
-      }
-    }
-  }
-}
