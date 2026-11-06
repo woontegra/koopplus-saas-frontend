@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { User, UserCreatePayload, UserRole, UserUpdatePayload } from '@shared/types'
 import SecurityQuestionFields, {
   EMPTY_SECURITY_QUESTION_FORM,

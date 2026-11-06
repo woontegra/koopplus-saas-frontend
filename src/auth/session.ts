@@ -1,4 +1,4 @@
-﻿const TOKEN_KEY = 'koopplus.saas.accessToken'
+const TOKEN_KEY = 'koopplus.saas.accessToken'
 const TENANT_KEY = 'koopplus.saas.tenantId'
 const REMEMBER_EMAIL_KEY = 'koopplus.saas.rememberEmail'
 const SUPPORT_KEY = 'koopplus.saas.support'

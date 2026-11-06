@@ -1,4 +1,4 @@
-﻿import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import BrandLogo from '../../components/layout/BrandLogo'
 import { IconLogout } from '../../components/ui/icons'

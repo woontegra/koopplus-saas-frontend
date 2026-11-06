@@ -1,4 +1,4 @@
-﻿/* Platform paneli — masaüstü tokens.css (--kat-*) dili. Yalnız /platform ve profil/banner bileşenleri. */
+/* Platform paneli — masaüstü tokens.css (--kat-*) dili. Yalnız /platform ve profil/banner bileşenleri. */
 .platform-shell {
   display: flex;
   flex-direction: column;

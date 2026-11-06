@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react'
+import { useMemo } from 'react'
 import { useAuth } from '../../auth/AuthContext'
 import { clearSession, loadSupportSession } from '../../auth/session'
 import { formatDate } from '../../utils/format'

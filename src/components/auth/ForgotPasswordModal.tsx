@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import type { ResetPasswordWithSecurityPayload } from '@shared/types'
 
 type ResetStep = 'email' | 'answer' | 'password' | 'done'

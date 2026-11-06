@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { CooperativeCreatePayload, CooperativeRecord } from '@shared/types'
 import { requireTrialEmail, requireTurkishMobile } from '@shared/trialContact'

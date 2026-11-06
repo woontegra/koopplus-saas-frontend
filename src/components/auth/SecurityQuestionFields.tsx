@@ -1,4 +1,4 @@
-﻿import {
+import {
   SECURITY_QUESTION_CUSTOM,
   SECURITY_QUESTION_PRESETS
 } from '@shared/securityQuestions'

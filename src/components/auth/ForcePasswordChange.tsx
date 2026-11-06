@@ -1,4 +1,4 @@
-﻿import { useAuth } from '../../auth/AuthContext'
+import { useAuth } from '../../auth/AuthContext'
 import { useActionToast } from '../../hooks/useActionToast'
 import ChangeOwnPasswordForm from './ChangeOwnPasswordForm'
 import koopPlusMark from '../../assets/brand/koopPlusFavicon.png'

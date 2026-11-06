@@ -1,4 +1,4 @@
-﻿/* SaaS-only: auth-loading + tenant-select. Login görünümü masaüstü global.css (.login-*) ile birebir; burada override yok. */
+/* SaaS-only: auth-loading + tenant-select. Login görünümü masaüstü global.css (.login-*) ile birebir; burada override yok. */
 .auth-loading {
   display: flex;
   flex-direction: column;

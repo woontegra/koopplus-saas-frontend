@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { DashboardMonthDetail } from '@shared/types'
 import EmptyState from '../ui/EmptyState'
 import { formatDate, formatMoney } from '../../utils/format'

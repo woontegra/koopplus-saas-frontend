@@ -1,4 +1,4 @@
-﻿const PLATFORM_TOKEN_KEY = 'koopplus.saas.platformToken'
+const PLATFORM_TOKEN_KEY = 'koopplus.saas.platformToken'
 
 export function loadPlatformToken(): string | null {
   try {

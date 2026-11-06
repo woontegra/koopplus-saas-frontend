@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { LibraryFile, LibraryPreviewResult } from '@shared/types'
 import {
   IconClose,

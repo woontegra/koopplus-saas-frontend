@@ -1,4 +1,4 @@
-﻿/** Kullanım süresi yardımcıları. */
+/** Kullanım süresi yardımcıları. */
 export const USAGE_WARNING_DAYS = 7
 
 /** Kalan gün (yukarı yuvarlanır). Süre yoksa null; geçmişse 0 veya negatif. */

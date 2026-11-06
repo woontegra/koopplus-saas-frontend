@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom'
 import { formatShareRatioTr } from '@shared/shareRatio'
 import type {
