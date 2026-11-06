@@ -17,3 +17,8 @@ export function roleLabel(role: MembershipRole): string {
 export function canSeeAdminOnly(role: MembershipRole | null | undefined): boolean {
   return role === 'ADMIN'
 }
+
+/** Backend WRITE seviyesi: ADMIN | STAFF. VIEWER yalnız okur. */
+export function canWriteMembers(role: MembershipRole | null | undefined): boolean {
+  return role === 'ADMIN' || role === 'STAFF'
+}

@@ -5,9 +5,17 @@ import { roleLabel } from '../../auth/roles'
 
 type AppHeaderProps = {
   pageTitle: string
+  showNavToggle?: boolean
+  navOpen?: boolean
+  onToggleNav?: () => void
 }
 
-export default function AppHeader({ pageTitle }: AppHeaderProps): JSX.Element {
+export default function AppHeader({
+  pageTitle,
+  showNavToggle = false,
+  navOpen = false,
+  onToggleNav
+}: AppHeaderProps): JSX.Element {
   const { user, activeMembership, activeRole, logout, clearTenant, memberships } = useAuth()
   const [loggingOut, setLoggingOut] = useState(false)
 
@@ -35,6 +43,23 @@ export default function AppHeader({ pageTitle }: AppHeaderProps): JSX.Element {
     <header className="app-header">
       <div className="app-header__main">
         <div className="app-header__brand">
+          {showNavToggle ? (
+            <button
+              type="button"
+              className="app-header__menu-btn"
+              aria-label={navOpen ? 'Menüyü kapat' : 'Menüyü aç'}
+              aria-expanded={navOpen}
+              aria-controls="app-sidebar"
+              onClick={onToggleNav}
+            >
+              <span className="app-header__menu-icon" aria-hidden>
+                <span />
+                <span />
+                <span />
+              </span>
+            </button>
+          ) : null}
+
           <div className="app-header__brand-icon" aria-hidden>
             K+
           </div>
