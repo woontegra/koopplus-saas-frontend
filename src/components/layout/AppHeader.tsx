@@ -20,18 +20,11 @@ export default function AppHeader({ settings, pageTitle }: AppHeaderProps): JSX.
   const activeMonth = Number(settings?.active_period_month) || now.getMonth() + 1
   const activeYear = Number(settings?.active_period_year) || now.getFullYear()
   const periodLabel = formatMonthYear(activeMonth, activeYear)
-  const dateLabel = now.toLocaleDateString('tr-TR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  })
+  const day = now.getDate()
+  const monthName = now.toLocaleDateString('tr-TR', { month: 'long' })
+  const year = now.getFullYear()
   const weekday = now.toLocaleDateString('tr-TR', { weekday: 'long' })
-  const dayNumber = String(now.getDate())
-  const monthYear = now.toLocaleDateString('tr-TR', {
-    month: 'long',
-    year: 'numeric'
-  })
+  const infoLine = `${day} ${monthName} ${year}, ${weekday} · Aktif dönem: ${periodLabel}`
 
   const coopName = settings?.cooperative_name?.trim()
 
@@ -42,21 +35,9 @@ export default function AppHeader({ settings, pageTitle }: AppHeaderProps): JSX.
           <CooperativeSwitcher fallbackName={coopName || pageTitle} />
         </div>
 
-        <div className="app-header__meta" title={dateLabel}>
-          <div className="app-header__clock">
-            <span className="app-header__day" aria-hidden>
-              {dayNumber}
-            </span>
-            <span className="app-header__date-block">
-              <span className="app-header__date">{monthYear}</span>
-              <span className="app-header__weekday">{weekday}</span>
-            </span>
-          </div>
-          <div className="app-header__period">
-            <span className="app-header__period-label">Aktif dönem</span>
-            <strong>{periodLabel}</strong>
-          </div>
-        </div>
+        <p className="app-header__meta" title={infoLine}>
+          {infoLine}
+        </p>
         <ProfileMenu />
       </div>
     </header>

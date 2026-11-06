@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext'
 import AdminRoute from './auth/AdminRoute'
 import RequireAuth from './auth/RequireAuth'
@@ -33,43 +33,61 @@ function RoutePlaceholder(): JSX.Element {
   return <PlaceholderPage title={getPageTitle(pathname)} />
 }
 
-function AppRoutes(): JSX.Element {
+function RequireTenantOutlet(): JSX.Element {
+  return (
+    <RequireTenant>
+      <Outlet />
+    </RequireTenant>
+  )
+}
+
+function AppShellRoutes(): JSX.Element {
   return (
     <Routes>
-      <Route element={<AppLayout />}>
-        <Route path="/" element={<SimpleDashboardPage />} />
-        <Route path="/uyeler" element={<SimpleMembersPage />} />
-        <Route path="/uyeler/:id" element={<SimpleMemberDetailPage />} />
-        <Route path="/uye-borc-tablosu" element={<MemberDebtTablePage />} />
-        <Route path="/uye-borc-tablosu/:partnerId" element={<MemberDebtTablePage />} />
-        <Route
-          path="/faiz-isletme"
-          element={
-            SIMPLIFIED_UI ? (
-              <AdminRoute>
+      <Route
+        element={
+          <RequireAuth>
+            <AppLayout />
+          </RequireAuth>
+        }
+      >
+        <Route path="/kooperatifler" element={<CooperativesPage />} />
+        <Route element={<RequireTenantOutlet />}>
+          <Route path="/" element={<SimpleDashboardPage />} />
+          <Route path="/uyeler" element={<SimpleMembersPage />} />
+          <Route path="/uyeler/:id" element={<SimpleMemberDetailPage />} />
+          <Route path="/uye-borc-tablosu" element={<MemberDebtTablePage />} />
+          <Route path="/uye-borc-tablosu/:partnerId" element={<MemberDebtTablePage />} />
+          <Route
+            path="/faiz-isletme"
+            element={
+              SIMPLIFIED_UI ? (
+                <AdminRoute>
+                  <InterestPage />
+                </AdminRoute>
+              ) : (
                 <InterestPage />
+              )
+            }
+          />
+          <Route path="/aidat-dagitim" element={<AidatDistributionPage />} />
+          <Route path="/kooperatif-kasasi" element={<CooperativeCashPage />} />
+          <Route path="/banka-hareketleri" element={<BankTransactionsPage />} />
+          <Route path="/raporlar" element={<ReportsPage />} />
+          <Route path="/dokumanlar" element={<LibraryPage />} />
+          <Route path="/ayarlar" element={<SimpleSettingsPage />} />
+          <Route
+            path="/yedekleme"
+            element={
+              <AdminRoute>
+                <BackupPage />
               </AdminRoute>
-            ) : (
-              <InterestPage />
-            )
-          }
-        />
-        <Route path="/aidat-dagitim" element={<AidatDistributionPage />} />
-        <Route path="/kooperatif-kasasi" element={<CooperativeCashPage />} />
-        <Route path="/banka-hareketleri" element={<BankTransactionsPage />} />
-        <Route path="/raporlar" element={<ReportsPage />} />
-        <Route path="/dokumanlar" element={<LibraryPage />} />
-        <Route path="/ayarlar" element={<SimpleSettingsPage />} />
-        <Route
-          path="/yedekleme"
-          element={
-            <AdminRoute>
-              <BackupPage />
-            </AdminRoute>
-          }
-        />
-        <Route path="*" element={<RoutePlaceholder />} />
+            }
+          />
+          <Route path="*" element={<RoutePlaceholder />} />
+        </Route>
       </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }
@@ -94,26 +112,7 @@ export default function App(): JSX.Element {
                       </RequireAuth>
                     }
                   />
-                  <Route
-                    path="/kooperatifler"
-                    element={
-                      <RequireAuth>
-                        <div className="tenant-select-shell">
-                          <CooperativesPage />
-                        </div>
-                      </RequireAuth>
-                    }
-                  />
-                  <Route
-                    path="*"
-                    element={
-                      <RequireAuth>
-                        <RequireTenant>
-                          <AppRoutes />
-                        </RequireTenant>
-                      </RequireAuth>
-                    }
-                  />
+                  <Route path="*" element={<AppShellRoutes />} />
                 </Routes>
               </CooperativeProvider>
             </ProgressProvider>

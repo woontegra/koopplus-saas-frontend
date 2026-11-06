@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import DataPanel from '../../components/ui/DataPanel'
 import DesktopTabs from '../../components/ui/DesktopTabs'
 import EmptyState from '../../components/ui/EmptyState'
@@ -853,6 +854,7 @@ type Dialog =
 export default function PlatformDashboardPage(): JSX.Element {
   const toast = useActionToast()
   const ask = useAskDialog()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [tab, setTab] = useState<PageTab>('tenants')
   const [summary, setSummary] = useState<PlatformSummary | null>(null)
   const [tenants, setTenants] = useState<PlatformTenant[]>([])
@@ -863,6 +865,12 @@ export default function PlatformDashboardPage(): JSX.Element {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [dialog, setDialog] = useState<Dialog>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (searchParams.get('create') !== '1') return
+    setDialog({ kind: 'create' })
+    setSearchParams({}, { replace: true })
+  }, [searchParams, setSearchParams])
 
   const load = useCallback(async () => {
     setLoading(true)
