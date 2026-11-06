@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useOutletContext, useSearchParams } from 'react-router-dom'
 import type {
   AppSettingsAll,
@@ -14,13 +14,12 @@ import SecurityQuestionFields, {
   resolveInitialSecurityQuestion,
   type SecurityQuestionFormValues
 } from '../../components/auth/SecurityQuestionFields'
-import UsersSection from '../../components/settings/UsersSection'
 import DataPanel from '../../components/ui/DataPanel'
 import CityDistrictFields from '../../components/ui/CityDistrictFields'
 import type { AppLayoutContext } from '../../components/layout/AppLayout'
 import { useActionToast } from '../../hooks/useActionToast'
 
-type SettingsSection = 'general' | 'users' | 'password' | 'backup'
+type SettingsSection = 'general' | 'password' | 'backup'
 
 function CooperativeSection({
   initial,
@@ -373,11 +372,10 @@ function BackupSettingsSection({
 }
 
 export default function SimpleSettingsPage(): JSX.Element {
-  const { canManageUsers, user, refreshSession } = useAuth()
+  const { user, refreshSession } = useAuth()
   const [searchParams] = useSearchParams()
   const sectionParam = searchParams.get('section')
   const initialSection: SettingsSection =
-    sectionParam === 'users' ||
     sectionParam === 'password' ||
     sectionParam === 'backup' ||
     sectionParam === 'general'
@@ -409,11 +407,8 @@ export default function SimpleSettingsPage(): JSX.Element {
       { key: 'password', label: 'Şifre Değiştir' },
       { key: 'backup', label: 'Yedekleme Ayarları' }
     ]
-    if (canManageUsers) {
-      items.splice(1, 0, { key: 'users', label: 'Kullanıcılar ve Yetkiler' })
-    }
     return items
-  }, [canManageUsers])
+  }, [])
 
   if (loading || !settings) {
     return <div className="page-loading">Ayarlar yükleniyor...</div>
@@ -452,7 +447,6 @@ export default function SimpleSettingsPage(): JSX.Element {
               onSaved={(data) => setSettings(data)}
             />
           )}
-          {section === 'users' && canManageUsers && <UsersSection />}
           {section === 'password' && (
             <PasswordSection
               onSecurityUpdated={() => {

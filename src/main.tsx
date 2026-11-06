@@ -6,6 +6,7 @@ import './styles/tokens.css'
 import './styles/global.css'
 import './styles/saas-auth.css'
 import './styles/saas-shell.css'
+import './styles/platform.css'
 import './styles/progress.css'
 
 installWindowApi()

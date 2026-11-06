@@ -17,7 +17,7 @@ import { getProgressBridge } from '../progress/ProgressContext'
 const BACKUP_FOLDER_KEY = 'koopplus.saas.backupFolderPreference'
 const selectionStore = new Map<
   string,
-  { fileName: string; contentBase64: string; fileSize: number }
+  { fileName: string; contentBase64: string; fileSize: number; documentsZipBase64?: string; kind?: 'saas' | 'desktop' }
 >()
 
 function sleep(ms: number): Promise<void> {
@@ -70,7 +70,7 @@ function pickBackupFile(): Promise<ApiResult<File>> {
   return new Promise((resolve) => {
     const input = document.createElement('input')
     input.type = 'file'
-    input.accept = '.json,.db,.zip,application/json,application/octet-stream'
+    input.accept = '.json,.db,.enc,.koopplus,.zip,application/json,application/octet-stream'
     input.style.display = 'none'
     const cleanup = (): void => input.remove()
     input.addEventListener('change', () => {
@@ -173,14 +173,21 @@ export const backupDesktopApi = {
     }
   },
 
-  async createBackup(): Promise<ApiResult<BackupCreateResult>> {
-    // Önce /api/backup/create; yoksa legacy debt backup
+  /**
+   * Yedek indir. password verilirse backend yedeği şifreler (encryption_password/password).
+   * Şifreli istekte legacy düz yedeğe ASLA düşülmez.
+   */
+  async createBackup(options: { password?: string } = {}): Promise<ApiResult<BackupCreateResult>> {
+    const password = options.password?.trim() ? options.password : undefined
     let res = await downloadViaApi('/api/backup/create', {
       method: 'POST',
-      body: { include_documents: true },
-      fallbackName: 'koopplus-tenant-backup.json'
+      body: {
+        include_documents: true,
+        ...(password ? { password, encrypt: true } : {})
+      },
+      fallbackName: password ? 'koopplus-tenant-backup.enc.json' : 'koopplus-tenant-backup.json'
     })
-    if (!res.success) {
+    if (!res.success && !password) {
       res = await downloadViaApi('/api/debt/backup', {
         method: 'GET',
         fallbackName: 'koopplus-tenant-backup.json'
@@ -214,22 +221,31 @@ export const backupDesktopApi = {
     const encoded = await fileToBase64(picked.data)
     if (!encoded.success || !encoded.data) return { success: false, error: encoded.error }
 
-    const validate = await desktopRequest<BackupValidateResult>('/api/backup/validate', {
-      method: 'POST',
-      body: {
-        fileName: encoded.data.fileName,
-        contentBase64: encoded.data.contentBase64
+    const validate = await desktopRequest<BackupValidateResult & { details?: { encrypted?: boolean } }>(
+      '/api/backup/validate',
+      {
+        method: 'POST',
+        body: {
+          fileName: encoded.data.fileName,
+          contentBase64: encoded.data.contentBase64
+        }
       }
-    })
+    )
 
     const token = crypto.randomUUID()
     selectionStore.set(token, encoded.data)
 
     if (validate.success && validate.data) {
+      // Şifreli yedek: backend `encrypted: true` döner (veya ad uzantısından anlaşılır).
+      const encrypted =
+        validate.data.encrypted === true ||
+        validate.data.details?.encrypted === true ||
+        /\.enc(\.json)?$|encrypted/i.test(encoded.data.fileName)
       return {
         success: true,
         data: {
           ...validate.data,
+          encrypted,
           selection_token: validate.data.selection_token || token,
           file_path: validate.data.file_path || encoded.data.fileName,
           file_size: validate.data.file_size || encoded.data.fileSize
@@ -242,6 +258,7 @@ export const backupDesktopApi = {
       success: true,
       data: {
         valid: true,
+        encrypted: /\.enc(\.json)?$|encrypted/i.test(encoded.data.fileName),
         file_path: encoded.data.fileName,
         file_size: encoded.data.fileSize,
         selection_token: token
@@ -249,9 +266,12 @@ export const backupDesktopApi = {
     }
   },
 
-  async restoreBackup(selectionToken: string): Promise<ApiResult<BackupRestoreResult>> {
+  /** Şifreli yedek için `password` gerekir (backend: password / backupPassword). */
+  async restoreBackup(
+    selectionToken: string,
+    options: { password?: string } = {}
+  ): Promise<ApiResult<BackupRestoreResult>> {
     const selection = selectionStore.get(selectionToken)
-    selectionStore.delete(selectionToken)
     if (!selection) {
       return { success: false, error: 'Yedek seçimi doğrulanamadı. Lütfen dosyayı yeniden seçin.' }
     }
@@ -263,16 +283,55 @@ export const backupDesktopApi = {
         body: {
           fileName: selection.fileName,
           contentBase64: selection.contentBase64,
-          selection_token: selectionToken
+          selection_token: selectionToken,
+          ...(options.password ? { password: options.password } : {})
         }
       }
     )
     if (!started.success || !started.data?.job_id) {
       return { success: false, error: started.error ?? 'Geri yükleme işi başlatılamadı.' }
     }
-    return pollRestoreJob(started.data.job_id)
+    const result = await pollRestoreJob(started.data.job_id)
+    if (result.success) selectionStore.delete(selectionToken)
+    return result
   },
 
+  /**
+   * Masaüstü KoopPlus yedeği: .db (+ opsiyonel .documents.zip) →
+   * POST /api/backup/restore/jobs { desktopDbBase64, documentsZipBase64? }.
+   */
+  async restoreDesktopBackup(
+    dbFile: File,
+    documentsZip?: File | null
+  ): Promise<ApiResult<BackupRestoreResult>> {
+    if (!/\.db$/i.test(dbFile.name)) {
+      return { success: false, error: 'Masaüstü yedeği .db uzantılı olmalıdır.' }
+    }
+    if (documentsZip && !/\.zip$/i.test(documentsZip.name)) {
+      return { success: false, error: 'Doküman arşivi .zip uzantılı olmalıdır.' }
+    }
+    const db = await fileToBase64(dbFile)
+    if (!db.success || !db.data) return { success: false, error: db.error }
+    let docsBase64: string | undefined
+    if (documentsZip) {
+      const docs = await fileToBase64(documentsZip)
+      if (!docs.success || !docs.data) return { success: false, error: docs.error }
+      docsBase64 = docs.data.contentBase64
+    }
+
+    const started = await desktopRequest<{ job_id: string }>('/api/backup/restore/jobs', {
+      method: 'POST',
+      body: {
+        fileName: dbFile.name,
+        desktopDbBase64: db.data.contentBase64,
+        ...(docsBase64 ? { documentsZipBase64: docsBase64 } : {})
+      }
+    })
+    if (!started.success || !started.data?.job_id) {
+      return { success: false, error: started.error ?? 'Geri yükleme işi başlatılamadı.' }
+    }
+    return pollRestoreJob(started.data.job_id)
+  },
   async listLogs(): Promise<ApiResult<BackupLog[]>> {
     const res = await desktopRequest<BackupLog[]>('/api/backup/logs')
     if (res.success && res.data) return res

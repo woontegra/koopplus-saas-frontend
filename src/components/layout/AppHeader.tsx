@@ -6,6 +6,7 @@ import type { AuthContextUser } from '../../auth/AuthContext'
 import { useCooperatives } from '../../context/CooperativeContext'
 import { formatMonthYear } from '../../utils/format'
 import { IconBuilding } from '../ui/icons'
+import ProfileMenu from './ProfileMenu'
 
 interface AppHeaderProps {
   settings: Settings | null
@@ -56,6 +57,7 @@ export default function AppHeader({ settings, pageTitle }: AppHeaderProps): JSX.
             <strong>{periodLabel}</strong>
           </div>
         </div>
+        <ProfileMenu />
       </div>
     </header>
   )

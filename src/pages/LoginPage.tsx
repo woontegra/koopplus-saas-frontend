@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import ForgotPasswordModal from '../components/auth/ForgotPasswordModal'
+import BrandLogo from '../components/layout/BrandLogo'
 import {
   IconCash,
   IconChart,
@@ -13,13 +14,14 @@ import {
   IconShield,
   IconUser,
   IconUsers
-} from '../components/auth/LoginIcons'
+} from '../components/ui/icons'
+import koopPlusMark from '../assets/brand/koopPlusFavicon.png'
 
 const LOGIN_FEATURES = [
   { title: 'Üye ve Borç', icon: IconUsers },
   { title: 'Tahsilat & Faiz', icon: IconPercent },
   { title: 'Kooperatif Kasası', icon: IconCash },
-  { title: 'Raporlama', icon: IconChart }
+  { title: 'Raporlama & Yedekleme', icon: IconChart }
 ] as const
 
 function loginErrorMessage(error: unknown): string {
@@ -93,13 +95,7 @@ export default function LoginPage(): JSX.Element {
             <span className="login-stage__ring login-stage__ring--outer" aria-hidden />
             <span className="login-stage__ring login-stage__ring--mid" aria-hidden />
             <span className="login-stage__ring login-stage__ring--inner" aria-hidden />
-            <div className="login-stage__wordmark login-stage__wordmark--text" aria-label="KoopPlus">
-              <span className="login-stage__wordmark-mark">K+</span>
-              <div className="login-stage__wordmark-copy">
-                <strong>KoopPlus</strong>
-                <span>SaaS</span>
-              </div>
-            </div>
+            <BrandLogo className="login-stage__wordmark" />
           </div>
 
           <div className="login-stage__copy login-stage__reveal login-stage__reveal--2">
@@ -109,8 +105,8 @@ export default function LoginPage(): JSX.Element {
               yeni merkezi.
             </h1>
             <p className="login-stage__lede">
-              Aidattan tahsilata, kasadan raporlamaya tüm kooperatif süreçlerinizi tek merkezden
-              yönetin.
+              Aidattan tahsilata, kasadan raporlamaya tüm kooperatif süreçlerinizi tek
+              merkezden yönetin.
             </p>
           </div>
 
@@ -136,8 +132,8 @@ export default function LoginPage(): JSX.Element {
 
         <section className="login-stage__aside">
           <form className="login-card login-stage__reveal login-stage__reveal--4" onSubmit={onSubmit}>
-            <div className="login-card__mark" aria-hidden>
-              <span className="login-card__mark-glyph">K+</span>
+            <div className="login-card__mark">
+              <img src={koopPlusMark} alt="" width={36} height={36} draggable={false} />
             </div>
             <h2 className="login-card__title">Tekrar hoş geldiniz</h2>
             <p className="login-card__subtitle">Hesabınıza giriş yaparak devam edin.</p>

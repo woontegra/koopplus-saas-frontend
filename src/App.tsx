@@ -25,6 +25,7 @@ import SimpleSettingsPage from './pages/settings/SimpleSettingsPage'
 import BackupPage from './pages/backup/BackupPage'
 import CooperativesPage from './pages/cooperatives/CooperativesPage'
 import PlaceholderPage from './pages/PlaceholderPage'
+import PlatformApp from './pages/platform/PlatformApp'
 import { getPageTitle, SIMPLIFIED_UI } from './config/navigation'
 
 function RoutePlaceholder(): JSX.Element {
@@ -73,9 +74,9 @@ function AppRoutes(): JSX.Element {
   )
 }
 
-export default function App(): JSX.Element {
+function TenantApp(): JSX.Element {
   return (
-    <BrowserRouter>
+    <>
       <AuthProvider>
         <DialogProvider>
           <ToastProvider>
@@ -111,6 +112,27 @@ export default function App(): JSX.Element {
           </ToastProvider>
         </DialogProvider>
       </AuthProvider>
+    </>
+  )
+}
+
+/** /platform/* tenant AuthProvider'dan bağımsız; ayrı platform JWT. */
+export default function App(): JSX.Element {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route
+          path="/platform/*"
+          element={
+            <DialogProvider>
+              <ToastProvider>
+                <PlatformApp />
+              </ToastProvider>
+            </DialogProvider>
+          }
+        />
+        <Route path="*" element={<TenantApp />} />
+      </Routes>
     </BrowserRouter>
   )
 }

@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import type { BackupInfo, BackupLog } from '@shared/types'
 import type { AppLayoutContext } from '../../components/layout/AppLayout'
@@ -10,6 +10,7 @@ import { formatDateTime, formatFileSize } from '../../utils/format'
 import { describeBackupCreateResult } from '../../utils/backupResult'
 import { useActionToast } from '../../hooks/useActionToast'
 import { useAskDialog } from '../../hooks/useAskDialog'
+import PlatformModal from '../../platform/PlatformModal'
 
 function fileNameFromPath(filePath: string): string {
   if (!filePath || filePath === '—') return '—'
@@ -31,6 +32,14 @@ export default function BackupPage(): JSX.Element {
   const [backingUp, setBackingUp] = useState(false)
   const [changingFolder, setChangingFolder] = useState(false)
   const [restoring, setRestoring] = useState(false)
+  const [encryptOn, setEncryptOn] = useState(false)
+  const [encPassword, setEncPassword] = useState('')
+  const [encConfirm, setEncConfirm] = useState('')
+  const [pendingEncrypted, setPendingEncrypted] = useState<{ token: string; filePath: string } | null>(null)
+  const [restorePassword, setRestorePassword] = useState('')
+  const [desktopDb, setDesktopDb] = useState<File | null>(null)
+  const [desktopDocs, setDesktopDocs] = useState<File | null>(null)
+  const [desktopKey, setDesktopKey] = useState(0)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
@@ -50,10 +59,25 @@ export default function BackupPage(): JSX.Element {
   }, [loadData])
 
   const handleCreateBackup = async (): Promise<void> => {
-    setBackingUp(true)
     setError('')
     setMessage('')
-    const res = await window.api.backup.createBackup()
+    if (encryptOn) {
+      if (encPassword.length < 8) {
+        setError('Yedek şifresi en az 8 karakter olmalıdır.')
+        return
+      }
+      if (encPassword !== encConfirm) {
+        setError('Yedek şifreleri eşleşmiyor.')
+        return
+      }
+      const understood = await ask.confirm(
+        'Şifreyi unutursanız bu yedek hiçbir şekilde açılamaz.\n\nŞifre sunucuda saklanmaz ve kurtarılamaz. Şifreyi güvenli bir yerde sakladığınızdan emin misiniz?',
+        { title: 'Şifreli Yedek', confirmLabel: 'Anladım, Yedekle', variant: 'warning' }
+      )
+      if (!understood) return
+    }
+    setBackingUp(true)
+    const res = await window.api.backup.createBackup(encryptOn ? { password: encPassword } : {})
     setBackingUp(false)
 
     if (res.success && res.data) {
@@ -68,6 +92,10 @@ export default function BackupPage(): JSX.Element {
         toast.warn(described.title, described.message)
       } else {
         toast.success(described.title, described.message)
+      }
+      if (encryptOn) {
+        setEncPassword('')
+        setEncConfirm('')
       }
       reloadSettings()
       loadData()
@@ -115,21 +143,17 @@ export default function BackupPage(): JSX.Element {
       toast.fail('Yedek geri yüklenemedi', 'Yedek seçimi doğrulanamadı.')
       return
     }
-    const confirmMsg = [
-      'Mevcut veriler yedek dosyasındaki verilerle değiştirilecektir.',
-      'Devam etmeden önce mevcut veritabanının güvenlik yedeği alınacaktır.',
-      '',
-      `Seçilen dosya: ${fileNameFromPath(filePath)}`,
-      '',
-      'Geri yüklemeye devam edilsin mi?'
-    ].join('\n')
+    if (selectRes.data.encrypted) {
+      setRestorePassword('')
+      setPendingEncrypted({ token: selectionToken, filePath })
+      return
+    }
+    await confirmAndRestore(selectionToken, filePath)
+  }
 
-    if (!(await ask.confirm(confirmMsg))) return
-
-    setRestoring(true)
-    const restoreRes = await window.api.backup.restoreBackup(selectionToken)
-    setRestoring(false)
-
+  const handleRestoreResult = async (
+    restoreRes: Awaited<ReturnType<typeof window.api.backup.restoreBackup>>
+  ): Promise<void> => {
     if (restoreRes.success) {
       if (restoreRes.data?.requires_manual_restart) {
         setMessage(
@@ -143,8 +167,8 @@ export default function BackupPage(): JSX.Element {
           'Geri yükleme tamamlandı.\n\nGeliştirme modunda uygulama otomatik yeniden başlamayabilir.\nLütfen uygulamayı kapatıp yeniden açın.'
         )
       } else {
-        setMessage('Geri yükleme tamamlandı. Uygulama yeniden başlatılıyor...')
-        toast.success('Yedek geri yüklendi', 'Uygulama yeniden başlatılıyor.')
+        setMessage('Geri yükleme tamamlandı.')
+        toast.success('Yedek geri yüklendi', 'Veriler yedekten geri yüklendi.')
       }
       reloadSettings()
       loadData()
@@ -154,6 +178,71 @@ export default function BackupPage(): JSX.Element {
     }
   }
 
+  const confirmAndRestore = async (
+    selectionToken: string,
+    filePath: string,
+    password?: string
+  ): Promise<boolean> => {
+    const confirmMsg = [
+      'Mevcut veriler yedek dosyasındaki verilerle değiştirilecektir.',
+      'Devam etmeden önce mevcut veritabanının güvenlik yedeği alınacaktır.',
+      '',
+      `Seçilen dosya: ${fileNameFromPath(filePath)}`,
+      '',
+      'Geri yüklemeye devam edilsin mi?'
+    ].join('\n')
+
+    if (!(await ask.confirm(confirmMsg))) return false
+
+    setRestoring(true)
+    const restoreRes = await window.api.backup.restoreBackup(selectionToken, { password })
+    setRestoring(false)
+    await handleRestoreResult(restoreRes)
+    return restoreRes.success
+  }
+
+  const handleEncryptedRestoreSubmit = async (): Promise<void> => {
+    if (!pendingEncrypted) return
+    if (!restorePassword) {
+      setError('Yedek şifresini girin.')
+      return
+    }
+    const { token, filePath } = pendingEncrypted
+    setPendingEncrypted(null)
+    const ok = await confirmAndRestore(token, filePath, restorePassword)
+    setRestorePassword('')
+    if (!ok) {
+      // Yanlış şifre vb. — dosyayı yeniden seçmeden tekrar denemek için pencereyi geri aç.
+      setPendingEncrypted({ token, filePath })
+    }
+  }
+
+  const handleDesktopRestore = async (): Promise<void> => {
+    if (!desktopDb) return
+    setError('')
+    setMessage('')
+    const confirmMsg = [
+      'Masaüstü KoopPlus yedeği bu kooperatife yüklenecek.',
+      'Mevcut veriler yedekteki verilerle değiştirilecektir.',
+      '',
+      `Veritabanı: ${desktopDb.name}`,
+      `Dokümanlar: ${desktopDocs ? desktopDocs.name : 'yüklenmeyecek'}`,
+      '',
+      'Devam edilsin mi?'
+    ].join('\n')
+    if (!(await ask.confirm(confirmMsg, { title: 'Masaüstü Yedeği Yükle', confirmLabel: 'Yükle', variant: 'danger' }))) {
+      return
+    }
+    setRestoring(true)
+    const res = await window.api.backup.restoreDesktopBackup(desktopDb, desktopDocs)
+    setRestoring(false)
+    await handleRestoreResult(res)
+    if (res.success) {
+      setDesktopDb(null)
+      setDesktopDocs(null)
+      setDesktopKey((k) => k + 1)
+    }
+  }
   if (loading || !info) {
     return <div className="page-loading">Yedekleme bilgileri yükleniyor...</div>
   }
@@ -220,6 +309,48 @@ export default function BackupPage(): JSX.Element {
             evrak arşivi yazılır. İlk yedeklemede klasör seçilir; sonraki yedeklemeler aynı klasöre
             alınır.
           </p>
+          <div className="backup-encrypt">
+            <label className="platform-check">
+              <input
+                type="checkbox"
+                checked={encryptOn}
+                onChange={(e) => setEncryptOn(e.target.checked)}
+                disabled={backingUp || restoring}
+              />
+              Yedeği şifre ile şifrele (opsiyonel)
+            </label>
+            {encryptOn && (
+              <>
+                <div className="alert alert-warning backup-encrypt__warning" role="alert">
+                  Şifreyi unutursanız bu yedek hiçbir şekilde açılamaz. Şifre sunucuda saklanmaz ve
+                  kurtarılamaz.
+                </div>
+                <div className="form-grid form-grid--2">
+                  <div className="form-group">
+                    <label>Yedek Şifresi (en az 8 karakter)</label>
+                    <input
+                      type="password"
+                      value={encPassword}
+                      onChange={(e) => setEncPassword(e.target.value)}
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Şifre Tekrar</label>
+                    <input
+                      type="password"
+                      value={encConfirm}
+                      onChange={(e) => setEncConfirm(e.target.value)}
+                      autoComplete="new-password"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+            {!encryptOn && (
+              <p className="settings-hint">Şifre seçmezseniz yedek düz (şifresiz) dosya olarak indirilir.</p>
+            )}
+          </div>
           <div className="settings-form__actions">
             <button
               type="button"
@@ -227,7 +358,7 @@ export default function BackupPage(): JSX.Element {
               onClick={handleCreateBackup}
               disabled={backingUp || changingFolder || restoring}
             >
-              {backingUp ? 'Yedekleniyor...' : 'Yedek Al'}
+              {backingUp ? 'Yedekleniyor...' : encryptOn ? 'Şifreli Yedek Al' : 'Yedek Al'}
             </button>
             <button
               type="button"
@@ -255,6 +386,50 @@ export default function BackupPage(): JSX.Element {
               disabled={backingUp || restoring}
             >
               {restoring ? 'Geri Yükleniyor...' : 'Yedekten Geri Yükle'}
+            </button>
+          </div>
+          <p className="settings-hint">
+            Şifreli yedek seçerseniz yedek şifresi sorulur.
+          </p>
+        </DataPanel>
+
+        <DataPanel
+          title="Masaüstü KoopPlus yedeği yükle"
+          subtitle="Masaüstü programdan alınan .db yedeğini bu kooperatife aktarın"
+        >
+          <div className="backup-restore-warning">
+            Masaüstü KoopPlus veritabanı (<span className="cell-mono">.db</span>) ve varsa doküman arşivi
+            (<span className="cell-mono">.documents.zip</span>) seçin. Mevcut veriler yedektekilerle
+            değiştirilir.
+          </div>
+          <div className="form-grid" key={desktopKey}>
+            <div className="form-group">
+              <label>Masaüstü veritabanı (.db) *</label>
+              <input
+                type="file"
+                accept=".db"
+                disabled={restoring}
+                onChange={(e) => setDesktopDb(e.target.files?.[0] ?? null)}
+              />
+            </div>
+            <div className="form-group">
+              <label>Dokümanlar (.documents.zip) — opsiyonel</label>
+              <input
+                type="file"
+                accept=".zip"
+                disabled={restoring}
+                onChange={(e) => setDesktopDocs(e.target.files?.[0] ?? null)}
+              />
+            </div>
+          </div>
+          <div className="settings-form__actions">
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={() => void handleDesktopRestore()}
+              disabled={backingUp || restoring || !desktopDb}
+            >
+              {restoring ? 'Yükleniyor...' : 'Masaüstü Yedeğini Yükle'}
             </button>
           </div>
         </DataPanel>
@@ -298,6 +473,43 @@ export default function BackupPage(): JSX.Element {
           </div>
         )}
       </DataPanel>
+      {pendingEncrypted && (
+        <PlatformModal
+          title="Şifreli Yedek"
+          onClose={() => setPendingEncrypted(null)}
+          footer={
+            <>
+              <button type="button" className="btn btn-sm" onClick={() => setPendingEncrypted(null)}>
+                İptal
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={() => void handleEncryptedRestoreSubmit()}
+                disabled={!restorePassword}
+              >
+                Devam Et
+              </button>
+            </>
+          }
+        >
+          <p>
+            <strong>{fileNameFromPath(pendingEncrypted.filePath)}</strong> şifreli bir yedek. Açmak
+            için yedek şifresini girin.
+          </p>
+          <div className="form-group">
+            <label>Yedek Şifresi</label>
+            <input
+              type="password"
+              value={restorePassword}
+              onChange={(e) => setRestorePassword(e.target.value)}
+              autoComplete="off"
+              autoFocus
+            />
+          </div>
+          <p className="settings-hint">Şifreyi unutursanız bu yedek hiçbir şekilde açılamaz.</p>
+        </PlatformModal>
+      )}
     </div>
   )
 }

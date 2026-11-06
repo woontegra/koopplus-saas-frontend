@@ -7,6 +7,7 @@ import { getPageTitle } from '../../config/navigation'
 import AppHeader from './AppHeader'
 import Sidebar from './Sidebar'
 import AppFooter from './AppFooter'
+import { SupportBanner, UsageExpiryBanner } from './TopBanners'
 import { useProtectNativeTyping } from '../../hooks/useAppKeyboard'
 
 export interface AppLayoutContext {
@@ -43,6 +44,8 @@ export default function AppLayout(): JSX.Element {
     <div className="app-shell">
       <Sidebar />
       <div className="app-main">
+        <SupportBanner />
+        <UsageExpiryBanner />
         <AppHeader
           settings={settings}
           pageTitle={pageTitle}

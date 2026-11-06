@@ -1035,6 +1035,8 @@ export interface BackupCreateResult {
 
 export interface BackupValidateResult {
   valid: boolean
+  /** Yedek şifreli — geri yüklemek için parola gerekir. */
+  encrypted?: boolean
   file_path: string
   file_size: number
   error?: string

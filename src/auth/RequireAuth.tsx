@@ -1,4 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom'
+import ForcePasswordChange from '../components/auth/ForcePasswordChange'
 import { useAuth } from './AuthContext'
 
 export default function RequireAuth({ children }: { children: JSX.Element }): JSX.Element {
@@ -37,6 +38,10 @@ export default function RequireAuth({ children }: { children: JSX.Element }): JS
 
   if (!token || !user) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  }
+
+  if (user.mustChangePassword) {
+    return <ForcePasswordChange />
   }
 
   return children

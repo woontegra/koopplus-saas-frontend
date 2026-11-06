@@ -6,6 +6,8 @@ export type AuthUser = {
   fullName: string
   isActive: boolean
   has_security_question?: boolean
+  /** Platform tarafından verilen geçici şifre — uygulamaya girmeden değiştirilmeli. */
+  mustChangePassword?: boolean
 }
 
 export type AuthMembership = {
@@ -16,6 +18,10 @@ export type AuthMembership = {
     id: string
     name: string
     status: string
+    isDemo?: boolean
+    /** ISO tarih — kullanım süresi sonu (yoksa sınırsız). */
+    usageExpiresAt?: string | null
+    demoExpiresAt?: string | null
   }
 }
 
