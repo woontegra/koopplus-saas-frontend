@@ -383,7 +383,14 @@ export const libraryDesktopApi = {
     const blobRes = await desktopFetchBlob(`/api/library/files/${encodeURIComponent(file.data)}/open`)
     if (!blobRes.success || !blobRes.data) return { success: false, error: blobRes.error }
     const url = URL.createObjectURL(blobRes.data.blob)
-    window.open(url, '_blank', 'noopener')
+    const opened = window.open(url, '_blank', 'noopener')
+    if (!opened) {
+      URL.revokeObjectURL(url)
+      return {
+        success: false,
+        error: 'Tarayıcı yeni sekmeyi engelledi. Pop-up izni verin veya dosyayı dışa aktarın.'
+      }
+    }
     window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
     return { success: true, data: true }
   },

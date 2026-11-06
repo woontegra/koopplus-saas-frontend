@@ -1,9 +1,9 @@
-import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useOutletContext } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext'
 import AdminRoute from './auth/AdminRoute'
 import RequireAuth from './auth/RequireAuth'
 import RequireTenant from './auth/RequireTenant'
-import AppLayout from './components/layout/AppLayout'
+import AppLayout, { type AppLayoutContext } from './components/layout/AppLayout'
 import { CooperativeProvider } from './context/CooperativeContext'
 import { DialogProvider } from './context/DialogContext'
 import { ToastProvider } from './context/ToastContext'
@@ -26,6 +26,7 @@ import BackupPage from './pages/backup/BackupPage'
 import CooperativesPage from './pages/cooperatives/CooperativesPage'
 import PlaceholderPage from './pages/PlaceholderPage'
 import PlatformApp from './pages/platform/PlatformApp'
+import AutoBackupRunner from './components/backup/AutoBackupRunner'
 import { getPageTitle, SIMPLIFIED_UI } from './config/navigation'
 
 function RoutePlaceholder(): JSX.Element {
@@ -34,9 +35,10 @@ function RoutePlaceholder(): JSX.Element {
 }
 
 function RequireTenantOutlet(): JSX.Element {
+  const layoutContext = useOutletContext<AppLayoutContext>()
   return (
     <RequireTenant>
-      <Outlet />
+      <Outlet context={layoutContext} />
     </RequireTenant>
   )
 }
@@ -101,6 +103,7 @@ export default function App(): JSX.Element {
             <ProgressProvider>
               <ProgressBridge />
               <ProgressBar />
+              <AutoBackupRunner />
               <CooperativeProvider>
                 <Routes>
                   <Route path="/login" element={<LoginPage />} />

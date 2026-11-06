@@ -17,11 +17,11 @@ import { cooperativesDesktopApi } from './cooperativesDesktopApi'
 import { backupDesktopApi } from './backupDesktopApi'
 import { authDesktopApi } from './authDesktopApi'
 
-/** Güncelleme/lisans SaaS'ta yok — yalnızca preload uyumluluğu için no-op. */
+/** Güncelleme/lisans SaaS'ta yok — çağrılırsa başarı iddiası yok. */
 const updateDesktopApi = {
   rendererReady: async (): Promise<{ success: boolean; data?: boolean; error?: string }> => ({
-    success: true,
-    data: true
+    success: false,
+    error: 'SaaS’ta masaüstü güncelleme denetimi yok.'
   })
 }
 

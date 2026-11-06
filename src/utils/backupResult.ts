@@ -21,9 +21,13 @@ export function describeBackupCreateResult(data: BackupCreateResult): {
       message: 'Veritabanı yedeği alındı. Doküman arşivi boştu.'
     }
   }
+  const where =
+    data.file_path && data.file_path.includes('/')
+      ? `Kayıt: ${data.file_path}`
+      : 'Dosya seçili yedek klasörüne (veya İndirilenler’e) kaydedildi.'
   return {
     kind: 'ok',
     title: 'Yedekleme tamamlandı',
-    message: 'Veritabanı ve doküman arşivi başarıyla indirildi.'
+    message: `Veritabanı ve dokümanlar yedekte. ${where}`
   }
 }

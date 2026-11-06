@@ -323,6 +323,8 @@ function BackupSettingsSection({
   const [changingFolder, setChangingFolder] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const folderPickerOk =
+    typeof window !== 'undefined' && typeof window.showDirectoryPicker === 'function'
 
   const handleChangeFolder = async (): Promise<void> => {
     setChangingFolder(true)
@@ -332,7 +334,7 @@ function BackupSettingsSection({
     setChangingFolder(false)
     if (res.success && res.data) {
       setMessage('Yedekleme klasörü güncellendi.')
-      toast.success('Ayarlar kaydedildi', 'Yedekleme klasörü güncellendi.')
+      toast.success('Ayarlar kaydedildi', `Klasör: ${res.data.folder}`)
       reloadSettings()
       onRefresh()
     } else if (res.error !== 'Klasör seçilmedi') {
@@ -348,17 +350,27 @@ function BackupSettingsSection({
     >
       {error && <div className="alert alert-error">{error}</div>}
       {message && <div className="alert alert-success">{message}</div>}
+      {!folderPickerOk && (
+        <div className="alert alert-warning">
+          Klasör seçimi için Chrome veya Edge kullanın; bu tarayıcıda yedekler İndirilenler
+          klasörüne iner.
+        </div>
+      )}
       <div className="form-grid">
         <div className="form-group form-group--wide">
           <label>Yedekleme Klasörü</label>
           <input readOnly value={info?.backup_folder || 'Henüz seçilmedi'} />
         </div>
       </div>
+      <p className="settings-hint" style={{ marginTop: 8, color: 'var(--kat-text-secondary)', fontSize: 12 }}>
+        Otomatik yedek: uygulama açıkken günde bir (saklanan son 10 dosya). Masaüstünde ayrı
+        sıklık/saklama ayar alanı yoktur.
+      </p>
       <div className="settings-actions">
         <button
           type="button"
           className="btn btn-sm btn-primary"
-          disabled={changingFolder}
+          disabled={changingFolder || !folderPickerOk}
           onClick={handleChangeFolder}
         >
           {changingFolder ? 'Seçiliyor...' : 'Klasör Değiştir'}

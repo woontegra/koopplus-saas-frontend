@@ -302,12 +302,10 @@ export default function BackupPage(): JSX.Element {
 
         <DataPanel title="Manuel Yedek Al" subtitle="Veritabanı ve dokümanları kayıtlı klasöre kopyalayın">
           <p className="settings-hint">
-            Yedek, açık kooperatifin veritabanını ve Dokümanlar arşivini içerir. Dosya yanında
-            <span className="cell-mono"> .koopplus.json </span>
-            kimlik bilgisi ve
-            <span className="cell-mono"> .documents.zip </span>
-            evrak arşivi yazılır. İlk yedeklemede klasör seçilir; sonraki yedeklemeler aynı klasöre
-            alınır.
+            Yedek seçili klasöre kaydedilir (Chrome/Edge). Klasör yoksa ilk yedekte bir kez seçilir;
+            sonraki yedekler sormadan aynı klasöre yazılır. Desteklenmeyen tarayıcılarda dosya
+            İndirilenler’e iner. Dokümanlar JSON yedeğin içine gömülür; şifreli yedek de aynı
+            klasöre yazılır.
           </p>
           <div className="backup-encrypt">
             <label className="platform-check">

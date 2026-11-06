@@ -13,40 +13,11 @@ import type {
 } from '@shared/types'
 import { desktopRequest } from './apiResult'
 
-function emptySettings(): Settings {
-  const now = new Date()
-  return {
-    cooperative_name: '',
-    cooperative_address: '',
-    cooperative_phone: '',
-    cooperative_email: '',
-    authorized_person: '',
-    cooperative_city: '',
-    cooperative_district: '',
-    cooperative_tax_id: '',
-    cooperative_description: '',
-    default_monthly_dues: '',
-    last_payment_day: '',
-    default_accrual_description: '',
-    active_period_month: String(now.getMonth() + 1),
-    active_period_year: String(now.getFullYear()),
-    backup_folder: '',
-    last_backup_date: '',
-    last_backup_file: '',
-    monthly_interest_rate: '',
-    use_end_of_month_due: ''
-  }
-}
-
 export const settingsDesktopApi = {
   async get(): Promise<ApiResult<Settings>> {
     const res = await desktopRequest<Settings>('/api/settings')
     if (!res.success || !res.data) {
-      // Backend henüz yoksa layout kırılmasın
-      if (res.error?.includes('bulunamadı') || res.error?.includes('404')) {
-        return { success: true, data: emptySettings() }
-      }
-      return { success: false, error: res.error }
+      return { success: false, error: res.error ?? 'Ayarlar alınamadı' }
     }
     return res
   },
