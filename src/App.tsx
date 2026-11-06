@@ -13,7 +13,9 @@ import ProgressBar from './progress/ProgressBar'
 import ProgressBridge from './progress/ProgressBridge'
 import { ProgressProvider } from './progress/ProgressContext'
 import LoginPage from './pages/LoginPage'
+import CooperativeCashPage from './pages/cash/CooperativeCashPage'
 import InterestPage from './pages/interest/InterestPage'
+import AidatDistributionPage from './pages/member/AidatDistributionPage'
 import MemberDebtTablePage from './pages/member/MemberDebtTablePage'
 import SimpleMemberDetailPage from './pages/member/SimpleMemberDetailPage'
 import SimpleMembersPage from './pages/member/SimpleMembersPage'
@@ -50,6 +52,8 @@ function AppRoutes(): JSX.Element {
                   )
                 }
               />
+              <Route path="/aidat-dagitim" element={<AidatDistributionPage />} />
+              <Route path="/kooperatif-kasasi" element={<CooperativeCashPage />} />
               <Route path="*" element={<RoutePlaceholder />} />
             </Route>
           </Routes>

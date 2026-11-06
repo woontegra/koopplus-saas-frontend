@@ -8,6 +8,8 @@ import {
   reportsDesktopApi
 } from './debtDesktopApi'
 import { interestDesktopApi, interestPoliciesDesktopApi } from './interestDesktopApi'
+import { aidatDistributionDesktopApi } from './aidatDistributionDesktopApi'
+import { cashDesktopApi } from './cashDesktopApi'
 
 type ApiResult<T = void> = { success: boolean; data?: T; error?: string }
 
@@ -60,6 +62,8 @@ export function installWindowApi(): void {
     memberExtraDebts: memberExtraDebtsDesktopApi,
     interest: interestDesktopApi,
     interestPolicies: interestPoliciesDesktopApi,
+    aidatDistribution: aidatDistributionDesktopApi,
+    cash: cashDesktopApi,
     reports: reportsDesktopApi,
     documents: documentsDesktopApi,
     backup: backupDesktopApi,
@@ -100,6 +104,8 @@ declare global {
       memberExtraDebts: typeof memberExtraDebtsDesktopApi
       interest: typeof interestDesktopApi
       interestPolicies: typeof interestPoliciesDesktopApi
+      aidatDistribution: typeof aidatDistributionDesktopApi
+      cash: typeof cashDesktopApi
       reports: typeof reportsDesktopApi
       documents: typeof documentsDesktopApi
       backup: typeof backupDesktopApi
