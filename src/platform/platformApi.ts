@@ -7,8 +7,17 @@ import { apiUrl } from '../api/config'
 import { loadToken } from '../auth/session'
 
 export type PlatformTenantStatus = 'ACTIVE' | 'SUSPENDED' | 'ARCHIVED'
+export type PlatformAnnouncementKind = 'INFO' | 'WARNING' | 'MAINTENANCE'
+export type PlatformUserRole = 'ADMIN' | 'STAFF' | 'VIEWER'
 
 export type PlatformAdmin = { id: string; email: string; fullName: string }
+
+export type PlatformPage<T> = {
+  page: number
+  pageSize: number
+  total: number
+  items: T[]
+}
 
 export type PlatformSummary = {
   tenantCount: number
@@ -27,6 +36,7 @@ export type PlatformTenant = {
   status: PlatformTenantStatus
   isDemo?: boolean
   memberCount: number
+  partnerCount?: number | null
   userCount: number
   lastUserLoginAt: string | null
   usageExpiresAt: string | null
@@ -34,14 +44,132 @@ export type PlatformTenant = {
   createdAt: string
 }
 
+export type PlatformTenantSettings = {
+  cooperativeName: string
+  taxId: string
+  authorizedPerson: string
+  phone: string
+  email: string
+  address: string
+  city: string
+  district: string
+}
+
+export type PlatformUsageExtension = {
+  id: string
+  oldExpiresAt: string | null
+  newExpiresAt: string | null
+  daysAdded: number
+  note: string | null
+  adminId?: string | null
+  createdAt: string
+}
+
+export type PlatformTenantDetail = {
+  id: string
+  name: string
+  status: PlatformTenantStatus
+  isDemo: boolean
+  kind: 'DEMO' | 'YEARLY'
+  partnerCount: number | null
+  memberCount: number
+  userCount: number
+  documentCount: number
+  lastUserLoginAt: string | null
+  usageExpiresAt: string | null
+  demoExpiresAt: string | null
+  daysLeft: number | null
+  suspensionReason: string | null
+  platformNotes: string | null
+  maxUsers: number | null
+  maxMembers: number | null
+  settings: PlatformTenantSettings | null
+  extensions: PlatformUsageExtension[]
+  createdAt: string
+  updatedAt: string
+}
+
+export type PlatformTenantPatch = {
+  name?: string
+  platformNotes?: string
+  maxUsers?: number | null
+  maxMembers?: number | null
+  usageExpiresAt?: string | null
+  demoExpiresAt?: string | null
+  settings?: Partial<PlatformTenantSettings>
+}
+
+export type PlatformExtendBody = {
+  days?: number
+  toDate?: string
+  convertToYearly?: boolean
+  note?: string
+}
+
+export type PlatformExtendResult = {
+  id: string
+  isDemo: boolean
+  usageExpiresAt: string | null
+  demoExpiresAt: string | null
+  status: PlatformTenantStatus
+  daysAdded: number
+  newExpiresAt: string
+}
+
+export type PlatformLoginAttempt = {
+  id: string
+  email: string
+  userId: string | null
+  success: boolean
+  ip: string | null
+  userAgent: string | null
+  reason: string | null
+  createdAt: string
+}
+
+export type PlatformCriticalLog = {
+  id: string
+  action: string
+  detail: unknown
+  user: { id: string; email: string; fullName: string } | null
+  createdAt: string
+}
+
 export type PlatformTenantUser = {
   id: string
   email: string
   fullName: string
-  role: 'ADMIN' | 'STAFF' | 'VIEWER'
+  role: PlatformUserRole
   isActive: boolean
   mustChangePassword?: boolean
   lastLoginAt?: string | null
+}
+
+export type PlatformMembershipRef = {
+  tenantId: string
+  tenantName: string
+  tenantStatus?: PlatformTenantStatus
+  role: PlatformUserRole
+}
+
+export type PlatformGlobalUser = {
+  id: string
+  email: string
+  fullName: string
+  isActive: boolean
+  lastLoginAt: string | null
+  lastSeenAt: string | null
+  loginCount: number
+  memberships: PlatformMembershipRef[]
+}
+
+export type PlatformOnlineUser = {
+  id: string
+  email: string
+  fullName: string
+  lastSeenAt: string | null
+  lastSeenIp: string | null
+  memberships: Array<{ tenantId: string; tenantName: string; role: PlatformUserRole }>
 }
 
 export type PlatformAuditEntry = {
@@ -55,10 +183,138 @@ export type PlatformAuditEntry = {
   createdAt: string
 }
 
+export type PlatformAnnouncement = {
+  id: string
+  title: string
+  body: string
+  kind: PlatformAnnouncementKind
+  startsAt: string
+  endsAt: string
+  allTenants: boolean
+  tenantIds: string[]
+  createdAt?: string
+}
+
+export type PlatformAnnouncementInput = {
+  title: string
+  body: string
+  kind: PlatformAnnouncementKind
+  startsAt: string
+  endsAt: string
+  allTenants: boolean
+  tenantIds?: string[]
+}
+
+export type PlatformOverview = {
+  cards: {
+    total: number
+    yearlyActive: number
+    demoActive: number
+    suspended: number
+    archived: number
+    expiringSoon: number
+    expired: number
+    memberTotal: number
+    userTotal: number
+  }
+  logins: {
+    uniqueToday: number
+    uniqueLast7Days: number
+    uniqueLast30Days: number
+    onlineNow: number
+  }
+  charts: {
+    dailyLogins: Array<{ date: string; count: number }>
+    monthlyTenants: Array<{ month: string; count: number }>
+    topActive: Array<{
+      id: string
+      name: string
+      lastUserLoginAt: string
+      memberCount: number
+      rank: number
+    }>
+  }
+  alerts: {
+    expiringSoon: Array<{
+      id: string
+      name: string
+      daysLeft: number
+      expiresAt: string
+      isDemo: boolean
+    }>
+    expired: Array<{ id: string; name: string; status: PlatformTenantStatus; expiresAt: string | null }>
+    inactive14d: Array<{ id: string; name: string; lastUserLoginAt: string | null }>
+    failedLogins: Array<{ email: string; failures: number }>
+  }
+  generatedAt: string
+}
+
+export type PlatformSystemHealth = {
+  server: {
+    ok: boolean
+    uptimeSec: number
+    node: string
+    platform: string
+    loadAvg: number[]
+  }
+  database: { ok: boolean; sizeBytes: number | null }
+  pdf: { ok: boolean; executablePath: string | null; error: string | null }
+  volume: { path: string; freeBytes: number | null; totalBytes: number | null }
+  version: { commit: string | null; service: string }
+  generatedAt: string
+}
+
+export type PlatformPdfProbe = {
+  pdfOk: boolean
+  executablePath?: string | null
+  error?: string | null
+}
+
 export type NewTenantAdmin = { fullName: string; email: string; password: string }
+
+export type PlatformImpersonateResult = {
+  token: string
+  tenantId?: string
+  tenantName?: string
+  tenant?: { id: string; name: string }
+}
 
 function req<T>(path: string, method: string, body?: unknown): Promise<T> {
   return apiRequest<T>(path, { method, body, token: loadToken() })
+}
+
+function qs(params: Record<string, string | number | boolean | undefined | null>): string {
+  const sp = new URLSearchParams()
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null || v === '') continue
+    sp.set(k, String(v))
+  }
+  const s = sp.toString()
+  return s ? `?${s}` : ''
+}
+
+function tid(id: string): string {
+  return encodeURIComponent(id)
+}
+
+/** Liste yanıtı dizi veya sayfalı nesne olabilir — her zaman sayfalı nesneye çevirir. */
+function toPage<T>(raw: T[] | Partial<PlatformPage<T>> | null | undefined): PlatformPage<T> {
+  if (Array.isArray(raw)) return { page: 1, pageSize: raw.length, total: raw.length, items: raw }
+  const items = Array.isArray(raw?.items) ? raw.items : []
+  return {
+    page: raw?.page ?? 1,
+    pageSize: raw?.pageSize ?? items.length,
+    total: raw?.total ?? items.length,
+    items
+  }
+}
+
+function normalizeTenant(t: PlatformTenant): PlatformTenant {
+  return {
+    ...t,
+    memberCount: t.memberCount ?? t.partnerCount ?? 0,
+    lastUserLoginAt: t.lastUserLoginAt ?? (t as { lastLogin?: string | null }).lastLogin ?? null
+  }
 }
 
 export function platformMe(token?: string | null): Promise<{ admin: PlatformAdmin }> {
@@ -66,26 +322,36 @@ export function platformMe(token?: string | null): Promise<{ admin: PlatformAdmi
 }
 
 export const platformApi = {
+  // ---- Genel bakış ----
+  overview: () => req<PlatformOverview>('/api/platform/overview', 'GET'),
+
   summary: () => req<PlatformSummary>('/api/platform/summary', 'GET'),
 
-  listTenants: async (params: { search?: string; status?: string } = {}) => {
-    const qs = new URLSearchParams()
-    if (params.search?.trim()) qs.set('search', params.search.trim())
-    if (params.status) qs.set('status', params.status)
-    // Büyük sayfa: panel tüm kooperatifleri tek istekte ister
-    qs.set('pageSize', '200')
-    const q = qs.toString()
-    const raw = await req<
-      PlatformTenant[] | { items?: PlatformTenant[]; page?: number; total?: number }
-    >(`/api/platform/tenants${q ? `?${q}` : ''}`, 'GET')
-    const rows = Array.isArray(raw) ? raw : Array.isArray(raw?.items) ? raw.items : []
-    return rows.map((t) => ({
-      ...t,
-      memberCount: t.memberCount ?? (t as { partnerCount?: number }).partnerCount ?? 0,
-      lastUserLoginAt:
-        t.lastUserLoginAt ?? (t as { lastLogin?: string | null }).lastLogin ?? null
-    }))
+  // ---- Kooperatifler ----
+  listTenantsPage: async (
+    params: { search?: string; status?: string; demo?: string; page?: number; pageSize?: number } = {}
+  ): Promise<PlatformPage<PlatformTenant>> => {
+    const raw = await req<PlatformTenant[] | Partial<PlatformPage<PlatformTenant>>>(
+      `/api/platform/tenants${qs({
+        search: params.search?.trim(),
+        status: params.status,
+        demo: params.demo,
+        page: params.page,
+        pageSize: params.pageSize ?? 200
+      })}`,
+      'GET'
+    )
+    const page = toPage(raw)
+    return { ...page, items: page.items.map(normalizeTenant) }
   },
+
+  listTenants: async (params: { search?: string; status?: string } = {}): Promise<PlatformTenant[]> =>
+    (await platformApi.listTenantsPage({ ...params, pageSize: 200 })).items,
+
+  getTenant: (id: string) => req<PlatformTenantDetail>(`/api/platform/tenants/${tid(id)}`, 'GET'),
+
+  patchTenant: (id: string, body: PlatformTenantPatch) =>
+    req<PlatformTenantDetail>(`/api/platform/tenants/${tid(id)}`, 'PATCH', body),
 
   createTenant: (body: { name: string; usageExpiresAt?: string | null; admin: NewTenantAdmin }) =>
     req<PlatformTenant>('/api/platform/tenants', 'POST', body),
@@ -93,23 +359,47 @@ export const platformApi = {
   createDemoTenant: (body: { name: string; days: number; admin: NewTenantAdmin }) =>
     req<PlatformTenant>('/api/platform/tenants/demo', 'POST', body),
 
-  setStatus: (id: string, status: PlatformTenantStatus) =>
-    req<PlatformTenant>(`/api/platform/tenants/${encodeURIComponent(id)}/status`, 'PATCH', {
-      status
+  /** SUSPENDED için suspensionReason zorunludur. */
+  setStatus: (id: string, status: PlatformTenantStatus, suspensionReason?: string) =>
+    req<PlatformTenantDetail>(`/api/platform/tenants/${tid(id)}/status`, 'PATCH', {
+      status,
+      ...(suspensionReason !== undefined ? { suspensionReason } : {})
     }),
 
   setUsageExpiry: (id: string, usageExpiresAt: string | null) =>
-    req<PlatformTenant>(`/api/platform/tenants/${encodeURIComponent(id)}/usage-expiry`, 'PATCH', {
+    req<PlatformTenantDetail>(`/api/platform/tenants/${tid(id)}/usage-expiry`, 'PATCH', {
       usageExpiresAt
     }),
 
+  extendTenant: (id: string, body: PlatformExtendBody) =>
+    req<PlatformExtendResult>(`/api/platform/tenants/${tid(id)}/extend`, 'POST', body),
+
+  listExtensions: (id: string) =>
+    req<PlatformUsageExtension[]>(`/api/platform/tenants/${tid(id)}/extensions`, 'GET'),
+
+  loginHistory: (id: string, params: { success?: boolean; q?: string; limit?: number } = {}) =>
+    req<PlatformLoginAttempt[]>(
+      `/api/platform/tenants/${tid(id)}/login-history${qs({
+        success: params.success === undefined ? undefined : params.success,
+        q: params.q?.trim(),
+        limit: params.limit
+      })}`,
+      'GET'
+    ),
+
+  criticalLogs: (id: string, limit = 100) =>
+    req<PlatformCriticalLog[]>(`/api/platform/tenants/${tid(id)}/critical-logs${qs({ limit })}`, 'GET'),
+
   deleteTenant: (id: string, confirmName: string) =>
-    req<{ deleted: boolean }>(`/api/platform/tenants/${encodeURIComponent(id)}`, 'DELETE', {
+    req<{ deleted: boolean }>(`/api/platform/tenants/${tid(id)}`, 'DELETE', {
       confirmName
     }),
 
-  listUsers: (id: string) =>
-    req<PlatformTenantUser[]>(`/api/platform/tenants/${encodeURIComponent(id)}/users`, 'GET'),
+  impersonate: (id: string) =>
+    req<PlatformImpersonateResult>(`/api/platform/tenants/${tid(id)}/impersonate`, 'POST', {}),
+
+  // ---- Kooperatif kullanıcıları ----
+  listUsers: (id: string) => req<PlatformTenantUser[]>(`/api/platform/tenants/${tid(id)}/users`, 'GET'),
 
   createUser: (
     id: string,
@@ -117,42 +407,77 @@ export const platformApi = {
       fullName: string
       email: string
       password: string
-      role: PlatformTenantUser['role']
+      role: PlatformUserRole
       mustChangePassword?: boolean
     }
-  ) => req<PlatformTenantUser>(`/api/platform/tenants/${encodeURIComponent(id)}/users`, 'POST', body),
+  ) => req<unknown>(`/api/platform/tenants/${tid(id)}/users`, 'POST', body),
 
   updateUser: (
     id: string,
     userId: string,
     body: Partial<Pick<PlatformTenantUser, 'fullName' | 'email' | 'role' | 'isActive'>>
-  ) =>
-    req<PlatformTenantUser>(
-      `/api/platform/tenants/${encodeURIComponent(id)}/users/${encodeURIComponent(userId)}`,
-      'PATCH',
-      body
-    ),
+  ) => req<PlatformTenantUser>(`/api/platform/tenants/${tid(id)}/users/${tid(userId)}`, 'PATCH', body),
 
   resetUserPassword: (
     id: string,
     userId: string,
     body: { newPassword: string; mustChangePassword?: boolean }
   ) =>
-    req<{ changed: boolean }>(
-      `/api/platform/tenants/${encodeURIComponent(id)}/users/${encodeURIComponent(userId)}/password`,
+    req<{ reset?: boolean; temporaryPassword?: string }>(
+      `/api/platform/tenants/${tid(id)}/users/${tid(userId)}/password`,
       'POST',
       body
     ),
 
-  impersonate: (id: string) =>
-    req<{ token: string; tenantId?: string; tenantName?: string }>(
-      `/api/platform/tenants/${encodeURIComponent(id)}/impersonate`,
+  // ---- Global kullanıcılar / çevrimiçi ----
+  listAllUsers: async (
+    params: { q?: string; page?: number; pageSize?: number } = {}
+  ): Promise<PlatformPage<PlatformGlobalUser>> =>
+    toPage(
+      await req<PlatformGlobalUser[] | Partial<PlatformPage<PlatformGlobalUser>>>(
+        `/api/platform/users${qs({ q: params.q?.trim(), page: params.page, pageSize: params.pageSize })}`,
+        'GET'
+      )
+    ),
+
+  listOnline: () => req<PlatformOnlineUser[]>('/api/platform/online', 'GET'),
+
+  revokeSessions: (userId: string) =>
+    req<{ userId: string; tokenVersion: number }>(
+      `/api/platform/users/${tid(userId)}/revoke-sessions`,
       'POST',
       {}
     ),
 
-  audit: (limit = 200) => req<PlatformAuditEntry[]>(`/api/platform/audit?limit=${limit}`, 'GET'),
+  // ---- Duyurular ----
+  listAnnouncements: () => req<PlatformAnnouncement[]>('/api/platform/announcements', 'GET'),
 
+  createAnnouncement: (body: PlatformAnnouncementInput) =>
+    req<PlatformAnnouncement>('/api/platform/announcements', 'POST', body),
+
+  deleteAnnouncement: (id: string) =>
+    req<{ deleted: boolean }>(`/api/platform/announcements/${tid(id)}`, 'DELETE'),
+
+  // ---- Sistem ----
+  systemHealth: () => req<PlatformSystemHealth>('/api/platform/system/health', 'GET'),
+
+  pdfHealth: () => req<PlatformPdfProbe>('/api/platform/health/pdf', 'GET'),
+
+  // ---- Denetim ----
+  auditLogs: async (
+    params: { tenantId?: string; adminId?: string; action?: string; page?: number; pageSize?: number } = {}
+  ): Promise<PlatformPage<PlatformAuditEntry>> =>
+    toPage(
+      await req<PlatformAuditEntry[] | Partial<PlatformPage<PlatformAuditEntry>>>(
+        `/api/platform/audit-logs${qs(params)}`,
+        'GET'
+      )
+    ),
+
+  audit: async (limit = 200): Promise<PlatformAuditEntry[]> =>
+    (await platformApi.auditLogs({ pageSize: limit })).items,
+
+  // ---- Yedek / geri yükleme ----
   restoreTenant: (
     id: string,
     body: {
@@ -161,12 +486,7 @@ export const platformApi = {
       password?: string
       documentsZipBase64?: string
     }
-  ) =>
-    req<Record<string, unknown>>(
-      `/api/platform/tenants/${encodeURIComponent(id)}/restore`,
-      'POST',
-      body
-    ),
+  ) => req<Record<string, unknown>>(`/api/platform/tenants/${tid(id)}/restore`, 'POST', body),
 
   restoreJob: (id: string, jobId: string) =>
     req<{
@@ -174,10 +494,34 @@ export const platformApi = {
       error?: string
       processed?: number
       total?: number
-    }>(
-      `/api/platform/tenants/${encodeURIComponent(id)}/restore/jobs/${encodeURIComponent(jobId)}`,
-      'GET'
-    )
+    }>(`/api/platform/tenants/${tid(id)}/restore/jobs/${tid(jobId)}`, 'GET')
+}
+
+/** Kooperatif tarafı: aktif duyurular (X-Tenant-Id ile). */
+export type TenantAnnouncement = {
+  id: string
+  title: string
+  body: string
+  kind: PlatformAnnouncementKind
+  startsAt: string
+  endsAt: string
+}
+
+export function fetchTenantAnnouncements(tenantId: string): Promise<TenantAnnouncement[]> {
+  return apiRequest<TenantAnnouncement[]>('/api/auth/announcements', {
+    method: 'GET',
+    token: loadToken(),
+    tenantId
+  })
+}
+
+export function sendHeartbeat(tenantId: string): Promise<{ ok: boolean }> {
+  return apiRequest<{ ok: boolean }>('/api/auth/heartbeat', {
+    method: 'POST',
+    body: {},
+    token: loadToken(),
+    tenantId
+  })
 }
 
 /** Geri yükleme işini başlatır ve tamamlanana kadar yoklar (hata → exception). */

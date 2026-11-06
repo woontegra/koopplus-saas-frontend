@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from 'react-router-dom'
+﻿import { Outlet, useLocation } from 'react-router-dom'
 import { useCallback, useEffect, useState } from 'react'
 import type { Settings } from '@shared/types'
 import { useAuth } from '../../auth/AuthContext'
@@ -7,7 +7,8 @@ import { getPageTitle } from '../../config/navigation'
 import AppHeader from './AppHeader'
 import Sidebar from './Sidebar'
 import AppFooter from './AppFooter'
-import { SupportBanner, UsageExpiryBanner } from './TopBanners'
+import { AnnouncementBanners, SupportBanner, UsageExpiryBanner } from './TopBanners'
+import Heartbeat from './Heartbeat'
 import { useProtectNativeTyping } from '../../hooks/useAppKeyboard'
 
 export interface AppLayoutContext {
@@ -42,10 +43,12 @@ export default function AppLayout(): JSX.Element {
 
   return (
     <div className="app-shell">
+      <Heartbeat />
       <Sidebar />
       <div className="app-main">
         <SupportBanner />
         <UsageExpiryBanner />
+        <AnnouncementBanners />
         <AppHeader
           settings={settings}
           pageTitle={pageTitle}
@@ -65,3 +68,4 @@ export default function AppLayout(): JSX.Element {
     </div>
   )
 }
+
