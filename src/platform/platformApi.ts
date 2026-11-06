@@ -94,12 +94,23 @@ export function platformMe(token: string): Promise<{ admin: PlatformAdmin }> {
 export const platformApi = {
   summary: () => req<PlatformSummary>('/api/platform/summary', 'GET'),
 
-  listTenants: (params: { search?: string; status?: string } = {}) => {
+  listTenants: async (params: { search?: string; status?: string } = {}) => {
     const qs = new URLSearchParams()
     if (params.search?.trim()) qs.set('search', params.search.trim())
     if (params.status) qs.set('status', params.status)
+    // Büyük sayfa: panel tüm kooperatifleri tek istekte ister
+    qs.set('pageSize', '200')
     const q = qs.toString()
-    return req<PlatformTenant[]>(`/api/platform/tenants${q ? `?${q}` : ''}`, 'GET')
+    const raw = await req<
+      PlatformTenant[] | { items?: PlatformTenant[]; page?: number; total?: number }
+    >(`/api/platform/tenants${q ? `?${q}` : ''}`, 'GET')
+    const rows = Array.isArray(raw) ? raw : Array.isArray(raw?.items) ? raw.items : []
+    return rows.map((t) => ({
+      ...t,
+      memberCount: t.memberCount ?? (t as { partnerCount?: number }).partnerCount ?? 0,
+      lastUserLoginAt:
+        t.lastUserLoginAt ?? (t as { lastLogin?: string | null }).lastLogin ?? null
+    }))
   },
 
   createTenant: (body: { name: string; usageExpiresAt?: string | null; admin: NewTenantAdmin }) =>
