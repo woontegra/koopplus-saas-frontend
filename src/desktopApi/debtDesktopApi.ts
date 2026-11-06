@@ -354,6 +354,7 @@ export const documentsDesktopApi = {
     return documentsDesktopApi.saveMemberDebtTablePdf(partnerId)
   },
 
+  /** Sunucu: getPrintHtml ile aynı HTML → Puppeteer PDF (masaüstü Electron printToPDF). */
   async saveMemberDebtTablePdf(partnerId: number): Promise<ApiResult<DocumentPdfResult>> {
     const auth = authTenant()
     if (!auth.success || !auth.data) return { success: false, error: auth.error }
