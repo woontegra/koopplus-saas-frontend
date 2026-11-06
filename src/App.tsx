@@ -8,6 +8,9 @@ import { DialogProvider } from './context/DialogContext'
 import { LicenseProvider } from './context/LicenseContext'
 import { ToastProvider } from './context/ToastContext'
 import { UpdateStatusProvider } from './context/UpdateStatusContext'
+import ProgressBar from './progress/ProgressBar'
+import ProgressBridge from './progress/ProgressBridge'
+import { ProgressProvider } from './progress/ProgressContext'
 import LoginPage from './pages/LoginPage'
 import MemberDebtTablePage from './pages/MemberDebtTablePage'
 import SimpleMemberDetailPage from './pages/member/SimpleMemberDetailPage'
@@ -49,29 +52,33 @@ export default function App(): JSX.Element {
       <AuthProvider>
         <DialogProvider>
           <ToastProvider>
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route
-                path="/kooperatifler"
-                element={
-                  <RequireAuth>
-                    <div className="tenant-select-shell">
-                      <TenantSelectPage />
-                    </div>
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="*"
-                element={
-                  <RequireAuth>
-                    <RequireTenant>
-                      <AppRoutes />
-                    </RequireTenant>
-                  </RequireAuth>
-                }
-              />
-            </Routes>
+            <ProgressProvider>
+              <ProgressBridge />
+              <ProgressBar />
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route
+                  path="/kooperatifler"
+                  element={
+                    <RequireAuth>
+                      <div className="tenant-select-shell">
+                        <TenantSelectPage />
+                      </div>
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="*"
+                  element={
+                    <RequireAuth>
+                      <RequireTenant>
+                        <AppRoutes />
+                      </RequireTenant>
+                    </RequireAuth>
+                  }
+                />
+              </Routes>
+            </ProgressProvider>
           </ToastProvider>
         </DialogProvider>
       </AuthProvider>

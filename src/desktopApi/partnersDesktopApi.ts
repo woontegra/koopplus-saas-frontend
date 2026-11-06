@@ -15,6 +15,11 @@ import type {
 import { desktopRequest, requireAuthContext } from './apiResult'
 import { toCuid, toNumericId } from './idMap'
 import { toDesktopPartner, toSaasWriteBody } from './partnerMapper'
+import { getProgressBridge } from '../progress/ProgressContext'
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
 function authTenant(): ApiResult<{ tenantId: string }> {
   const auth = requireAuthContext()
@@ -283,10 +288,64 @@ export const partnersDesktopApi = {
       return { ...row, existing_partner_id: existing }
     })
 
-    return desktopRequest<MemberImportProcessResult>('/api/partners/import/process', {
-      method: 'POST',
-      body: { ...payload, rows }
-    })
+    const started = await desktopRequest<{ job_id: string; total: number }>(
+      '/api/partners/import/jobs',
+      { method: 'POST', body: { ...payload, rows } }
+    )
+    if (!started.success || !started.data) {
+      return { success: false, error: started.error ?? 'Aktarım işi başlatılamadı.' }
+    }
+
+    const { job_id, total } = started.data
+    const progress = getProgressBridge()
+    progress?.showProgress('Aktarılıyor', 0, total)
+
+    const POLL_MS = 400
+    const TIMEOUT_MS = 15 * 60 * 1000
+    const startedAt = Date.now()
+
+    try {
+      while (Date.now() - startedAt < TIMEOUT_MS) {
+        await sleep(POLL_MS)
+        const jobRes = await desktopRequest<{
+          job_id: string
+          status: 'queued' | 'running' | 'completed' | 'failed'
+          processed: number
+          total: number
+          result?: MemberImportProcessResult
+          error?: string
+        }>(`/api/partners/import/jobs/${encodeURIComponent(job_id)}`)
+
+        if (!jobRes.success || !jobRes.data) {
+          progress?.hideProgress()
+          return { success: false, error: jobRes.error ?? 'Aktarım durumu alınamadı.' }
+        }
+
+        const job = jobRes.data
+        progress?.updateProgress(job.processed, job.total || total)
+
+        if (job.status === 'completed' && job.result) {
+          progress?.hideProgress()
+          return { success: true, data: job.result }
+        }
+        if (job.status === 'failed') {
+          progress?.hideProgress()
+          return { success: false, error: job.error ?? 'İçe aktarma başarısız.' }
+        }
+      }
+
+      progress?.hideProgress()
+      return {
+        success: false,
+        error: 'Aktarım zaman aşımına uğradı. Lütfen üye listesini kontrol edip gerekirse yeniden deneyin.'
+      }
+    } catch (error) {
+      progress?.hideProgress()
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Aktarım sırasında hata oluştu.'
+      }
+    }
   },
 
   async listImportBatches(): Promise<ApiResult<MemberImportBatch[]>> {
