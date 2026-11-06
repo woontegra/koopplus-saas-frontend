@@ -19,10 +19,11 @@ type RequestOptions = {
 }
 
 function mapHttpError(status: number, fallback: string): string {
+  // Backend'in `error` alanı yoksa yedek; varsa her zaman payload.error kullanılır.
   if (status === 401) return 'Oturum geçersiz veya süresi dolmuş. Lütfen tekrar giriş yapın.'
   if (status === 403) return 'Bu işlem için yetkiniz yok.'
   if (status === 404) return 'İstenen kaynak bulunamadı.'
-  if (status >= 500) return 'Sunucu hatası oluştu. Lütfen daha sonra tekrar deneyin.'
+  if (status >= 500) return fallback || 'Sunucu hatası oluştu. Lütfen daha sonra tekrar deneyin.'
   return fallback
 }
 
