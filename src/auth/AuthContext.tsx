@@ -22,11 +22,31 @@ import {
   saveToken
 } from './session'
 
+/** Masaüstü Sidebar/AppLayout uyumu: full_name + role (aktif kooperatif rolü). */
+export type AuthContextUser = AuthUser & {
+  full_name: string
+  role: MembershipRole
+}
+
+/** Masaüstü ile aynı rol etiketleri. */
+export function roleLabel(role: MembershipRole): string {
+  switch (role) {
+    case 'ADMIN':
+      return 'Yönetici'
+    case 'STAFF':
+      return 'İşlem Yetkilisi'
+    case 'VIEWER':
+      return 'Sadece Görüntüleme'
+    default:
+      return role
+  }
+}
+
 type AuthContextValue = {
   ready: boolean
   bootError: string | null
   token: string | null
-  user: AuthUser | null
+  user: AuthContextUser | null
   memberships: AuthMembership[]
   tenantId: string | null
   activeMembership: AuthMembership | null
@@ -180,12 +200,25 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   const isAdmin = activeRole === 'ADMIN'
   const canWrite = activeRole === 'ADMIN' || activeRole === 'STAFF'
 
+  const contextUser = useMemo<AuthContextUser | null>(
+    () =>
+      user
+        ? {
+            ...user,
+            full_name: user.fullName,
+            // Kooperatif seçilmemişse en kısıtlı rol (adminOnly menüler gizli kalır)
+            role: activeRole ?? 'VIEWER'
+          }
+        : null,
+    [user, activeRole]
+  )
+
   const value = useMemo<AuthContextValue>(
     () => ({
       ready,
       bootError,
       token,
-      user,
+      user: contextUser,
       memberships,
       tenantId,
       activeMembership,
@@ -205,7 +238,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       ready,
       bootError,
       token,
-      user,
+      contextUser,
       memberships,
       tenantId,
       activeMembership,

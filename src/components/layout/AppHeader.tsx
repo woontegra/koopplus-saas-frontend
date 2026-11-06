@@ -1,115 +1,187 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { useAuth } from '../../auth/AuthContext'
-import { roleLabel } from '../../auth/roles'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { APP_SUBTITLE } from '@shared/branding'
+import type { Settings } from '@shared/types'
+import type { AuthUser } from '../../api/types'
+import { useCooperatives } from '../../context/CooperativeContext'
+import { formatMonthYear } from '../../utils/format'
+import { IconBuilding } from '../ui/icons'
 
-type AppHeaderProps = {
+interface AppHeaderProps {
+  settings: Settings | null
   pageTitle: string
-  showNavToggle?: boolean
-  navOpen?: boolean
-  onToggleNav?: () => void
+  user: AuthUser
+  onLogout: () => void
 }
 
-export default function AppHeader({
-  pageTitle,
-  showNavToggle = false,
-  navOpen = false,
-  onToggleNav
-}: AppHeaderProps): JSX.Element {
-  const { user, activeMembership, activeRole, logout, clearTenant, memberships } = useAuth()
-  const [loggingOut, setLoggingOut] = useState(false)
-
+export default function AppHeader({ settings, pageTitle }: AppHeaderProps): JSX.Element {
   const now = new Date()
-  const dayNumber = String(now.getDate())
-  const monthYear = now.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })
+  const activeMonth = Number(settings?.active_period_month) || now.getMonth() + 1
+  const activeYear = Number(settings?.active_period_year) || now.getFullYear()
+  const periodLabel = formatMonthYear(activeMonth, activeYear)
+  const dateLabel = now.toLocaleDateString('tr-TR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  })
   const weekday = now.toLocaleDateString('tr-TR', { weekday: 'long' })
-  const periodLabel = now.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })
-  const coopName = activeMembership?.tenant.name ?? 'KoopPlus SaaS'
+  const dayNumber = String(now.getDate())
+  const monthYear = now.toLocaleDateString('tr-TR', {
+    month: 'long',
+    year: 'numeric'
+  })
 
-  const handleLogout = async (): Promise<void> => {
-    setLoggingOut(true)
-    try {
-      await logout()
-    } finally {
-      setLoggingOut(false)
-    }
-  }
-
-  const handleSwitchTenant = (): void => {
-    clearTenant()
-  }
+  const coopName = settings?.cooperative_name?.trim()
 
   return (
     <header className="app-header">
       <div className="app-header__main">
         <div className="app-header__brand">
-          {showNavToggle ? (
-            <button
-              type="button"
-              className="app-header__menu-btn"
-              aria-label={navOpen ? 'Menüyü kapat' : 'Menüyü aç'}
-              aria-expanded={navOpen}
-              aria-controls="app-sidebar"
-              onClick={onToggleNav}
-            >
-              <span className="app-header__menu-icon" aria-hidden>
-                <span />
-                <span />
-                <span />
-              </span>
-            </button>
-          ) : null}
-
-          <div className="app-header__brand-icon" aria-hidden>
-            K+
-          </div>
-          <div className="app-header__brand-text">
-            <div className="app-header__coop">{coopName}</div>
-            <div className="app-header__program">{pageTitle}</div>
-          </div>
+          <CooperativeSwitcher fallbackName={coopName || pageTitle} />
         </div>
 
-        <div className="app-header__meta" title={now.toLocaleDateString('tr-TR')}>
+        <div className="app-header__meta" title={dateLabel}>
           <div className="app-header__clock">
-            <span className="app-header__day">{dayNumber}</span>
-            <div className="app-header__date-block">
+            <span className="app-header__day" aria-hidden>
+              {dayNumber}
+            </span>
+            <span className="app-header__date-block">
               <span className="app-header__date">{monthYear}</span>
               <span className="app-header__weekday">{weekday}</span>
-            </div>
+            </span>
           </div>
           <div className="app-header__period">
             <span className="app-header__period-label">Aktif dönem</span>
             <strong>{periodLabel}</strong>
           </div>
         </div>
-
-        <div className="app-header__session">
-          <div className="app-header__session-text">
-            <strong>{user?.fullName ?? '—'}</strong>
-            <span>
-              {activeRole ? roleLabel(activeRole) : '—'}
-              {user?.email ? ` · ${user.email}` : ''}
-            </span>
-          </div>
-          {memberships.length > 1 ? (
-            <Link
-              to="/kooperatifler"
-              className="app-header__session-btn"
-              onClick={handleSwitchTenant}
-            >
-              Kooperatif değiştir
-            </Link>
-          ) : null}
-          <button
-            type="button"
-            className="app-header__session-btn app-header__session-btn--danger"
-            onClick={() => void handleLogout()}
-            disabled={loggingOut}
-          >
-            {loggingOut ? 'Çıkış…' : 'Çıkış'}
-          </button>
-        </div>
       </div>
     </header>
+  )
+}
+
+function CooperativeSwitcher({ fallbackName }: { fallbackName: string }): JSX.Element {
+  const navigate = useNavigate()
+  const { cooperatives, currentId, openCooperative } = useCooperatives()
+  const [open, setOpen] = useState(false)
+  const [switching, setSwitching] = useState(false)
+  const [error, setError] = useState('')
+  const rootRef = useRef<HTMLDivElement | null>(null)
+
+  const current = cooperatives.find((item) => item.id === currentId)
+  const label = current?.name || fallbackName
+
+  useEffect(() => {
+    if (!open) return
+
+    const onPointerDown = (event: MouseEvent): void => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const handleOpen = async (id: string): Promise<void> => {
+    if (id === currentId) {
+      setOpen(false)
+      return
+    }
+    setSwitching(true)
+    setError('')
+    try {
+      await openCooperative(id)
+      setOpen(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Kooperatif açılamadı')
+    } finally {
+      setSwitching(false)
+    }
+  }
+
+  const visible = [...cooperatives].sort((a, b) => {
+    if (a.status !== b.status) return a.status === 'ACTIVE' ? -1 : 1
+    return a.name.localeCompare(b.name, 'tr')
+  })
+
+  return (
+    <div className="coop-switcher" ref={rootRef}>
+      <button
+        type="button"
+        className={`coop-switcher__trigger${open ? ' is-open' : ''}`}
+        onClick={() => setOpen((value) => !value)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        title="Kooperatif değiştir"
+      >
+        <span className="app-header__brand-icon" aria-hidden>
+          <IconBuilding size={22} />
+        </span>
+        <span className="app-header__brand-text">
+          <span className="app-header__coop">{label}</span>
+          <span className="app-header__program">{APP_SUBTITLE}</span>
+        </span>
+        <span className="coop-switcher__chevron" aria-hidden />
+      </button>
+
+      {open && (
+        <div className="coop-switcher__menu" role="listbox">
+          <div className="coop-switcher__heading">Kooperatif Değiştir</div>
+          {error && <div className="coop-switcher__error">{error}</div>}
+          <div className="coop-switcher__list">
+            {visible.map((item) => {
+              const isCurrent = item.id === currentId
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`coop-switcher__item${isCurrent ? ' is-current' : ''}${item.status === 'ARCHIVED' ? ' is-archived' : ''}`}
+                  disabled={switching}
+                  onClick={() => void handleOpen(item.id)}
+                >
+                  <span className="coop-switcher__item-name">{item.name}</span>
+                  <span className="coop-switcher__item-meta">
+                    {item.status === 'ARCHIVED' ? 'Arşiv' : 'Aktif'}
+                    {isCurrent ? ' · Şu anda açık' : ''}
+                  </span>
+                  {isCurrent && <span className="coop-switcher__check">✓</span>}
+                </button>
+              )
+            })}
+          </div>
+          <div className="coop-switcher__footer">
+            <button
+              type="button"
+              className="coop-switcher__link"
+              onClick={() => {
+                setOpen(false)
+                navigate('/kooperatifler')
+              }}
+            >
+              Tüm Kooperatifler
+            </button>
+            <button
+              type="button"
+              className="coop-switcher__link coop-switcher__link--accent"
+              onClick={() => {
+                setOpen(false)
+                navigate('/kooperatifler?action=new')
+              }}
+            >
+              + Yeni Kooperatif
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

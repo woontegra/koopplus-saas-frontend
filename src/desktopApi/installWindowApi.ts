@@ -1,3 +1,4 @@
+import type { Settings } from '@shared/types'
 import { partnersDesktopApi } from './partnersDesktopApi'
 
 type ApiResult<T = void> = { success: boolean; data?: T; error?: string }
@@ -9,6 +10,35 @@ function notPorted(name: string): () => Promise<ApiResult<never>> {
   })
 }
 
+/** AppLayout/Header/Footer için SaaS ayar kabuğu — kooperatif adı CooperativeSwitcher'dan gelir. */
+async function getSettings(): Promise<ApiResult<Settings>> {
+  const now = new Date()
+  return {
+    success: true,
+    data: {
+      cooperative_name: '',
+      cooperative_address: '',
+      cooperative_phone: '',
+      cooperative_email: '',
+      authorized_person: '',
+      cooperative_city: '',
+      cooperative_district: '',
+      cooperative_tax_id: '',
+      cooperative_description: '',
+      default_monthly_dues: '',
+      last_payment_day: '',
+      default_accrual_description: '',
+      active_period_month: String(now.getMonth() + 1),
+      active_period_year: String(now.getFullYear()),
+      backup_folder: '',
+      last_backup_date: '',
+      last_backup_file: '',
+      monthly_interest_rate: '',
+      use_end_of_month_due: ''
+    }
+  }
+}
+
 /**
  * Masaüstü preload `window.api` yüzeyi.
  * Üyeler modülü partners.* kullanır; diğer namespace'ler güvenli stub.
@@ -18,6 +48,12 @@ export function installWindowApi(): void {
 
   const api = {
     partners: partnersDesktopApi,
+    settings: {
+      get: getSettings
+    },
+    update: {
+      rendererReady: async (): Promise<ApiResult<void>> => ({ success: true })
+    },
     auth: {
       hasUsers: notPorted('auth.hasUsers'),
       createInitialAdmin: notPorted('auth.createInitialAdmin'),
@@ -38,6 +74,12 @@ declare global {
   interface Window {
     api: {
       partners: typeof partnersDesktopApi
+      settings: {
+        get: () => Promise<ApiResult<Settings>>
+      }
+      update: {
+        rendererReady: () => Promise<ApiResult<void>>
+      }
       auth: {
         hasUsers: () => Promise<ApiResult<boolean>>
         createInitialAdmin: (payload: unknown) => Promise<ApiResult<unknown>>

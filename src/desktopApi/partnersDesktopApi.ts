@@ -151,7 +151,7 @@ export const partnersDesktopApi = {
     if (!auth.success || !auth.data) return { success: false, error: auth.error }
     const res = await desktopRequest<{ partner: Record<string, unknown> }>('/api/partners', {
       method: 'POST',
-      body: toSaasWriteBody(input)
+      body: toSaasWriteBody(auth.data.tenantId, input)
     })
     if (!res.success || !res.data) return { success: false, error: res.error }
     return {
@@ -168,7 +168,7 @@ export const partnersDesktopApi = {
 
     const res = await desktopRequest<{ partner: Record<string, unknown> }>(
       `/api/partners/${encodeURIComponent(cuidRes.data)}`,
-      { method: 'PUT', body: toSaasWriteBody(input) }
+      { method: 'PUT', body: toSaasWriteBody(auth.data.tenantId, input) }
     )
     if (!res.success || !res.data) return { success: false, error: res.error }
     return {

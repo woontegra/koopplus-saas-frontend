@@ -24,7 +24,7 @@ export const LEGACY_USER_DATA_DIRS = [
   'Kooperatif Aidat Takip'
 ]
 
-export const APP_VERSION = '1.0.10'
+export const APP_VERSION = '0.1.0'
 
 export const DB_FILE_NAME = 'kooperatif.db'
 
