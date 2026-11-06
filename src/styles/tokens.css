@@ -1,0 +1,58 @@
+:root {
+  --kat-bg-app: #eef1f6;
+  --kat-bg-workspace: #eef1f6;
+  --kat-bg-surface: #f8fafc;
+  --kat-bg-panel: #ffffff;
+  --kat-bg-panel-alt: #f4f6fa;
+  --kat-bg-header: #ffffff;
+  --kat-bg-sidebar: #0f2744;
+  --kat-bg-sidebar-group: rgba(255, 255, 255, 0.04);
+  --kat-bg-table-head: #f3f6fb;
+  --kat-bg-table-row-hover: #f5f8fc;
+  --kat-bg-hover: #f1f5f9;
+
+  --kat-text: #1e293b;
+  --kat-text-primary: #1e293b;
+  --kat-text-secondary: #64748b;
+  --kat-text-muted: #94a3b8;
+  --kat-text-inverse: #e8eef6;
+  --kat-text-inverse-muted: #93a4bb;
+  --kat-text-header: #0f172a;
+
+  --kat-navy: #0f2744;
+  --kat-navy-deep: #0b1d33;
+  --kat-primary: #2563eb;
+  --kat-primary-hover: #1d4ed8;
+  --kat-accent: #2563eb;
+  --kat-accent-soft: rgba(37, 99, 235, 0.12);
+
+  --kat-debit: #dc2626;
+  --kat-debit-bg: #fef2f2;
+  --kat-credit: #15803d;
+  --kat-credit-bg: #f0fdf4;
+  --kat-warning: #b45309;
+  --kat-warning-bg: #fffbeb;
+  --kat-info: #1d4ed8;
+  --kat-info-bg: #eff6ff;
+
+  --kat-border: #e2e8f0;
+  --kat-border-light: #edf1f6;
+  --kat-border-strong: #cbd5e1;
+
+  --kat-shadow-sm: 0 1px 2px rgba(15, 39, 68, 0.06);
+  --kat-shadow-md: 0 4px 14px rgba(15, 39, 68, 0.08);
+  --kat-shadow-panel: 0 1px 2px rgba(15, 39, 68, 0.04), 0 1px 3px rgba(15, 39, 68, 0.06);
+
+  --kat-radius: 10px;
+  --kat-radius-sm: 6px;
+  --kat-radius-md: 12px;
+  --kat-radius-lg: 14px;
+  --kat-sidebar-width: 248px;
+  --kat-header-height: 64px;
+  --kat-table-row-height: 34px;
+  --kat-font: 'Segoe UI', 'Segoe UI Variable', system-ui, sans-serif;
+  --kat-font-size: 13px;
+  --kat-font-size-sm: 12px;
+  --kat-font-size-md: 13px;
+  --kat-font-size-lg: 14px;
+}
