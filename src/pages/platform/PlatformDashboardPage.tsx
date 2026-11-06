@@ -11,6 +11,7 @@ import {
   platformApi,
   platformDownloadBackup,
   platformErrorMessage,
+  platformRestoreAndWait,
   type NewTenantAdmin,
   type PlatformAuditEntry,
   type PlatformSummary,
@@ -430,7 +431,7 @@ function RestoreModal({
     setBusy(true)
     setError('')
     try {
-      await platformApi.restoreTenant(tenant.id, {
+      await platformRestoreAndWait(tenant.id, {
         fileName: file.name,
         contentBase64: await readFileAsBase64(file),
         ...(password ? { password } : {}),

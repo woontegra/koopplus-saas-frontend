@@ -151,6 +151,19 @@ export const usersDesktopApi = {
     return { success: true, data: found }
   },
 
+  /** Kullanıcıyı kooperatiften kaldırır (DELETE /api/users/:id — son ADMIN / kendisi engelli). */
+  async remove(id: number): Promise<ApiResult<void>> {
+    const auth = authTenant()
+    if (!auth.success || !auth.data) return { success: false, error: auth.error }
+    const userId = resolveUserCuid(auth.data.tenantId, id)
+    if (!userId.success || !userId.data) return { success: false, error: userId.error }
+    const res = await desktopRequest<unknown>(`/api/users/${encodeURIComponent(userId.data)}`, {
+      method: 'DELETE'
+    })
+    if (!res.success) return { success: false, error: res.error }
+    return { success: true }
+  },
+
   async setActive(id: number, isActive: number): Promise<ApiResult<User>> {
     const auth = authTenant()
     if (!auth.success || !auth.data) return { success: false, error: auth.error }

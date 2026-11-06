@@ -7,7 +7,8 @@ import SecurityQuestionFields, {
 import DataPanel from '../ui/DataPanel'
 import EmptyState from '../ui/EmptyState'
 import StatusBadge from '../ui/StatusBadge'
-import { roleLabel } from '../../auth/AuthContext'
+import { roleLabel, useAuth } from '../../auth/AuthContext'
+import { useAskDialog } from '../../hooks/useAskDialog'
 import { formatDateTime } from '../../utils/format'
 import { useActionToast } from '../../hooks/useActionToast'
 
@@ -37,7 +38,13 @@ const EMPTY_FORM: UserFormState = {
 
 export default function UsersSection(): JSX.Element {
   const toast = useActionToast()
+  const ask = useAskDialog()
+  const { user: authUser } = useAuth()
   const [users, setUsers] = useState<User[]>([])
+  const [pwTarget, setPwTarget] = useState<User | null>(null)
+  const [pwForm, setPwForm] = useState({ password: '', password_confirm: '' })
+  const [pwSaving, setPwSaving] = useState(false)
+  const [pwError, setPwError] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -57,6 +64,59 @@ export default function UsersSection(): JSX.Element {
   useEffect(() => {
     loadUsers()
   }, [loadUsers])
+
+  const selfEmail = (authUser?.email ?? '').trim().toLowerCase()
+  const isSelf = (u: User): boolean =>
+    selfEmail !== '' && (u.email ?? u.username ?? '').trim().toLowerCase() === selfEmail
+  const activeAdminCount = users.filter((u) => u.role === 'ADMIN' && u.is_active === 1).length
+  const isLastAdmin = (u: User): boolean =>
+    u.role === 'ADMIN' && u.is_active === 1 && activeAdminCount <= 1
+
+  const openPasswordReset = (u: User): void => {
+    setPwTarget(u)
+    setPwForm({ password: '', password_confirm: '' })
+    setPwError('')
+  }
+
+  const handlePasswordReset = async (): Promise<void> => {
+    if (!pwTarget) return
+    setPwSaving(true)
+    setPwError('')
+    const res = await window.api.users.changePassword(pwTarget.id, pwForm)
+    setPwSaving(false)
+    if (res.success) {
+      toast.success('Şifre sıfırlandı', `${pwTarget.full_name} için yeni şifre belirlendi.`)
+      setPwTarget(null)
+    } else {
+      setPwError(res.error ?? 'Şifre sıfırlanamadı')
+    }
+  }
+
+  const handleRemove = async (u: User): Promise<void> => {
+    if (isSelf(u)) {
+      setError('Kendi hesabınızı silemezsiniz.')
+      return
+    }
+    if (isLastAdmin(u)) {
+      setError('Kooperatifte en az bir aktif yönetici kalmalıdır.')
+      return
+    }
+    const ok = await ask.confirm(
+      `${u.full_name} (${u.email || u.username}) kullanıcısı bu kooperatiften kaldırılacak. Devam edilsin mi?`,
+      { title: 'Kullanıcıyı Sil', confirmLabel: 'Sil', variant: 'danger' }
+    )
+    if (!ok) return
+    setError('')
+    setMessage('')
+    const res = await window.api.users.remove(u.id)
+    if (res.success) {
+      toast.success('Kullanıcı silindi', 'Kullanıcı kooperatiften kaldırıldı.')
+      loadUsers()
+    } else {
+      setError(res.error ?? 'Kullanıcı silinemedi')
+      toast.fail('Kullanıcı silinemedi', res.error)
+    }
+  }
 
   const openCreate = (): void => {
     setEditing(null)
@@ -136,6 +196,14 @@ export default function UsersSection(): JSX.Element {
     setError('')
     setMessage('')
     const next = user.is_active ? 0 : 1
+    if (!next && isSelf(user)) {
+      setError('Kendi hesabınızı kilitleyemezsiniz.')
+      return
+    }
+    if (!next && isLastAdmin(user)) {
+      setError('Kooperatifte en az bir aktif yönetici kalmalıdır.')
+      return
+    }
     const res = await window.api.users.setActive(user.id, next)
     if (res.success) {
       setMessage(next ? 'Kullanıcı aktif yapıldı.' : 'Kullanıcı pasif yapıldı.')
@@ -202,9 +270,33 @@ export default function UsersSection(): JSX.Element {
                         <button
                           type="button"
                           className="btn btn-sm"
+                          disabled={user.is_active === 1 && (isSelf(user) || isLastAdmin(user))}
+                          title={isSelf(user) ? 'Kendi hesabınızı kilitleyemezsiniz' : undefined}
                           onClick={() => handleToggleActive(user)}
                         >
-                          {user.is_active ? 'Pasif Yap' : 'Aktif Yap'}
+                          {user.is_active ? 'Kilitle' : 'Kilidi Aç'}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm"
+                          onClick={() => openPasswordReset(user)}
+                        >
+                          Şifre Sıfırla
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-danger"
+                          disabled={isSelf(user) || isLastAdmin(user)}
+                          title={
+                            isSelf(user)
+                              ? 'Kendi hesabınızı silemezsiniz'
+                              : isLastAdmin(user)
+                                ? 'Son yönetici silinemez'
+                                : undefined
+                          }
+                          onClick={() => void handleRemove(user)}
+                        >
+                          Sil
                         </button>
                       </div>
                     </td>
@@ -258,6 +350,8 @@ export default function UsersSection(): JSX.Element {
                   <label>Rol</label>
                   <select
                     value={form.role}
+                    disabled={Boolean(editing && editing.role === 'ADMIN' && (isSelf(editing) || isLastAdmin(editing)))}
+                    title={editing && isSelf(editing) ? 'Kendi yetkinizi düşüremezsiniz' : undefined}
                     onChange={(e) => setForm({ ...form, role: e.target.value as UserRole })}
                   >
                     {ROLES.map((role) => (
@@ -271,6 +365,7 @@ export default function UsersSection(): JSX.Element {
                   <label>Durum</label>
                   <select
                     value={form.is_active}
+                    disabled={Boolean(editing && (isSelf(editing) || isLastAdmin(editing)))}
                     onChange={(e) => setForm({ ...form, is_active: Number(e.target.value) })}
                   >
                     <option value={1}>Aktif</option>
@@ -309,6 +404,55 @@ export default function UsersSection(): JSX.Element {
               </button>
               <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}>
                 {saving ? 'Kaydediliyor...' : 'Kaydet'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pwTarget && (
+        <div className="modal-overlay">
+          <div className="modal modal--narrow">
+            <div className="modal-header">
+              <h3>Şifre Sıfırla — {pwTarget.full_name}</h3>
+              <button type="button" className="btn btn-sm" onClick={() => setPwTarget(null)}>
+                Kapat
+              </button>
+            </div>
+            <div className="modal-body">
+              {pwError && <div className="alert alert-error">{pwError}</div>}
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Yeni Şifre</label>
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    value={pwForm.password}
+                    onChange={(e) => setPwForm({ ...pwForm, password: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Yeni Şifre Tekrar</label>
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    value={pwForm.password_confirm}
+                    onChange={(e) => setPwForm({ ...pwForm, password_confirm: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-sm" onClick={() => setPwTarget(null)}>
+                İptal
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handlePasswordReset}
+                disabled={pwSaving}
+              >
+                {pwSaving ? 'Kaydediliyor...' : 'Şifreyi Sıfırla'}
               </button>
             </div>
           </div>

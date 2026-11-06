@@ -181,7 +181,36 @@ export const platformApi = {
       `/api/platform/tenants/${encodeURIComponent(id)}/restore`,
       'POST',
       body
+    ),
+
+  restoreJob: (id: string, jobId: string) =>
+    req<{
+      status: 'queued' | 'running' | 'completed' | 'failed'
+      error?: string
+      processed?: number
+      total?: number
+    }>(
+      `/api/platform/tenants/${encodeURIComponent(id)}/restore/jobs/${encodeURIComponent(jobId)}`,
+      'GET'
     )
+}
+
+/** Geri yükleme işini başlatır ve tamamlanana kadar yoklar (hata → exception). */
+export async function platformRestoreAndWait(
+  tenantId: string,
+  body: Parameters<typeof platformApi.restoreTenant>[1]
+): Promise<void> {
+  const started = await platformApi.restoreTenant(tenantId, body)
+  const jobId = String(started.job_id ?? started.jobId ?? '')
+  if (!jobId) return
+  const deadline = Date.now() + 30 * 60_000
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 600))
+    const job = await platformApi.restoreJob(tenantId, jobId)
+    if (job.status === 'completed') return
+    if (job.status === 'failed') throw new ApiError(job.error ?? 'Geri yükleme başarısız.', 500)
+  }
+  throw new ApiError('Geri yükleme zaman aşımına uğradı.', 504)
 }
 
 /** Yedeği blob olarak indirir (platform JWT). */
