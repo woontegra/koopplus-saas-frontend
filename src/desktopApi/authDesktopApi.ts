@@ -56,9 +56,11 @@ export const authDesktopApi = {
   async getPasswordResetQuestion(
     username: string
   ): Promise<ApiResult<PasswordResetQuestionResult>> {
-    return desktopPublicRequest<PasswordResetQuestionResult>(
-      `/api/auth/password-reset-question?username=${encodeURIComponent(username.trim())}`
-    )
+    // Backend POST + body (email|username); masaüstü IPC "username" adını korur.
+    return desktopPublicRequest<PasswordResetQuestionResult>('/api/auth/password-reset-question', {
+      method: 'POST',
+      body: { email: username.trim(), username: username.trim() }
+    })
   },
 
   async resetPasswordWithSecurityAnswer(
@@ -66,7 +68,11 @@ export const authDesktopApi = {
   ): Promise<ApiResult<void>> {
     return desktopPublicRequest<void>('/api/auth/reset-password-with-security-answer', {
       method: 'POST',
-      body: payload
+      body: {
+        ...payload,
+        email: payload.username,
+        username: payload.username
+      }
     })
   }
 }
