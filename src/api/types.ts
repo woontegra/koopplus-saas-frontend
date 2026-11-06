@@ -24,6 +24,8 @@ export type AuthMembership = {
     /** ISO tarih — kullanım süresi sonu (yoksa sınırsız). */
     usageExpiresAt?: string | null
     demoExpiresAt?: string | null
+    licenseActivatedAt?: string | null
+    licensePending?: boolean
   }
 }
 

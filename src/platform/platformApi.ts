@@ -65,6 +65,16 @@ export type PlatformUsageExtension = {
   createdAt: string
 }
 
+export type PlatformEmailLog = {
+  id: string
+  toEmail: string
+  kind: string
+  subject: string
+  success: boolean
+  error: string | null
+  createdAt: string
+}
+
 export type PlatformTenantDetail = {
   id: string
   name: string
@@ -83,10 +93,27 @@ export type PlatformTenantDetail = {
   platformNotes: string | null
   maxUsers: number | null
   maxMembers: number | null
+  licenseKey: string
+  licenseActivatedAt: string | null
+  licenseStatus: 'PENDING' | 'ACTIVATED' | string
   settings: PlatformTenantSettings | null
   extensions: PlatformUsageExtension[]
+  emailLogs?: PlatformEmailLog[]
   createdAt: string
   updatedAt: string
+}
+
+export type PlatformCreateTenantResult = {
+  tenant: PlatformTenantDetail
+  email?: { ok: boolean; error: string | null }
+  admin?: {
+    id: string
+    email: string
+    temporaryPassword: string | null
+    temporaryPasswordGenerated?: boolean
+    licenseKey?: string
+    mustChangePassword?: boolean
+  }
 }
 
 export type PlatformTenantPatch = {
@@ -259,6 +286,15 @@ export type PlatformSystemHealth = {
   }
   database: { ok: boolean; sizeBytes: number | null }
   pdf: { ok: boolean; executablePath: string | null; error: string | null }
+  smtp?: {
+    configured: boolean
+    ok: boolean
+    host: string | null
+    port: number
+    secure: boolean
+    from: string | null
+    error: string | null
+  }
   volume: { path: string; freeBytes: number | null; totalBytes: number | null }
   version: { commit: string | null; service: string }
   generatedAt: string
@@ -354,10 +390,10 @@ export const platformApi = {
     req<PlatformTenantDetail>(`/api/platform/tenants/${tid(id)}`, 'PATCH', body),
 
   createTenant: (body: { name: string; usageExpiresAt?: string | null; admin: NewTenantAdmin }) =>
-    req<PlatformTenant>('/api/platform/tenants', 'POST', body),
+    req<PlatformCreateTenantResult>('/api/platform/tenants', 'POST', body),
 
   createDemoTenant: (body: { name: string; days: number; admin: NewTenantAdmin }) =>
-    req<PlatformTenant>('/api/platform/tenants/demo', 'POST', body),
+    req<PlatformCreateTenantResult>('/api/platform/tenants/demo', 'POST', body),
 
   /** SUSPENDED için suspensionReason zorunludur. */
   setStatus: (id: string, status: PlatformTenantStatus, suspensionReason?: string) =>
@@ -460,6 +496,19 @@ export const platformApi = {
 
   // ---- Sistem ----
   systemHealth: () => req<PlatformSystemHealth>('/api/platform/system/health', 'GET'),
+
+  sendTestEmail: (to: string) =>
+    req<{ ok: boolean; error: string | null }>('/api/platform/system/test-email', 'POST', { to }),
+
+  regenerateLicense: (id: string) =>
+    req<PlatformTenantDetail>(`/api/platform/tenants/${tid(id)}/license/regenerate`, 'POST', {}),
+
+  resendWelcomeEmail: (id: string) =>
+    req<{
+      email: { ok: boolean; error: string | null }
+      admin: { email: string; temporaryPassword: string | null; licenseKey: string }
+      tenant: PlatformTenantDetail
+    }>(`/api/platform/tenants/${tid(id)}/welcome-email`, 'POST', {}),
 
   pdfHealth: () => req<PlatformPdfProbe>('/api/platform/health/pdf', 'GET'),
 

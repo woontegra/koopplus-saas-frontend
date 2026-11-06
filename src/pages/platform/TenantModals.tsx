@@ -77,6 +77,12 @@ export function CreateTenantModal({
   const [admin, setAdmin] = useState<NewTenantAdmin>({ fullName: '', email: '', password: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [createdInfo, setCreatedInfo] = useState<{
+    emailOk: boolean
+    emailError: string | null
+    temporaryPassword: string | null
+    licenseKey: string | null
+  } | null>(null)
 
   const submit = async (): Promise<void> => {
     if (!name.trim()) return setError('Kooperatif adı zorunludur.')
@@ -86,16 +92,29 @@ export function CreateTenantModal({
     setError('')
     try {
       const adminBody = { ...admin, fullName: admin.fullName.trim(), email: admin.email.trim() }
-      if (demo) {
-        await platformApi.createDemoTenant({ name: name.trim(), days, admin: adminBody })
-      } else {
-        await platformApi.createTenant({
-          name: name.trim(),
-          usageExpiresAt: expiry ? endOfDayIso(expiry) : null,
-          admin: adminBody
+      const result = demo
+        ? await platformApi.createDemoTenant({ name: name.trim(), days, admin: adminBody })
+        : await platformApi.createTenant({
+            name: name.trim(),
+            usageExpiresAt: expiry ? endOfDayIso(expiry) : null,
+            admin: adminBody
+          })
+      const emailOk = result.email?.ok !== false
+      const emailError = result.email?.error ?? null
+      const temporaryPassword = result.admin?.temporaryPassword ?? null
+      const licenseKey = result.admin?.licenseKey ?? result.tenant.licenseKey ?? null
+      if (!emailOk) {
+        setCreatedInfo({
+          emailOk: false,
+          emailError,
+          temporaryPassword: temporaryPassword || admin.password,
+          licenseKey
         })
+        toast.warn('E-posta gönderilemedi', emailError || 'Kooperatif oluştu; şifreyi şimdi kopyalayın.')
+        onCreated()
+        return
       }
-      toast.success('Kooperatif oluşturuldu', demo ? `Demo (${days} gün) hazır.` : 'İlk yönetici eklendi.')
+      toast.success('Kooperatif oluşturuldu', demo ? `Demo (${days} gün) hazır.` : 'Hoş geldin e-postası gönderildi.')
       onCreated()
       onClose()
     } catch (err) {
@@ -121,11 +140,32 @@ export function CreateTenantModal({
       }
     >
       {error && <div className="alert alert-error">{error}</div>}
+      {createdInfo && (
+        <div className="alert alert-warning">
+          <strong>E-posta gönderilemedi.</strong> {createdInfo.emailError || 'SMTP hatası'}
+          <div style={{ marginTop: 8 }}>
+            {createdInfo.licenseKey && (
+              <div>
+                Lisans: <code>{createdInfo.licenseKey}</code>
+              </div>
+            )}
+            {createdInfo.temporaryPassword && (
+              <div>
+                Geçici şifre (yalnız şimdi): <code>{createdInfo.temporaryPassword}</code>
+              </div>
+            )}
+          </div>
+          <button type="button" className="btn btn-sm" style={{ marginTop: 8 }} onClick={onClose}>
+            Kapat
+          </button>
+        </div>
+      )}
       <div className="platform-segment" role="tablist">
         <button
           type="button"
           className={`platform-segment__item${!demo ? ' is-active' : ''}`}
           onClick={() => setDemo(false)}
+          disabled={!!createdInfo}
         >
           Normal
         </button>
@@ -133,6 +173,7 @@ export function CreateTenantModal({
           type="button"
           className={`platform-segment__item${demo ? ' is-active' : ''}`}
           onClick={() => setDemo(true)}
+          disabled={!!createdInfo}
         >
           Demo
         </button>

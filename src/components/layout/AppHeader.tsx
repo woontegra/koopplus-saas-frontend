@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { APP_SUBTITLE } from '@shared/branding'
 import type { Settings } from '@shared/types'
 import type { AuthContextUser } from '../../auth/AuthContext'
 import { useCooperatives } from '../../context/CooperativeContext'
@@ -111,7 +110,7 @@ function CooperativeSwitcher({ fallbackName }: { fallbackName: string }): JSX.El
         </span>
         <span className="app-header__brand-text">
           <span className="app-header__coop">{label}</span>
-          <span className="app-header__program">{APP_SUBTITLE}</span>
+          <span className="app-header__program">Kooperatif değiştir</span>
         </span>
         <span className="coop-switcher__chevron" aria-hidden />
       </button>

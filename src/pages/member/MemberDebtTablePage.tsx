@@ -13,7 +13,6 @@ import AllMembersDebtTablePdfModal from '../../components/member/AllMembersDebtT
 import MemberInfoPanel from '../../components/member/MemberInfoPanel'
 import PartnerFormModal from '../partners/PartnerFormModal'
 import PartnerSearchSelect from '../../components/partners/PartnerSearchSelect'
-import DataPanel from '../../components/ui/DataPanel'
 import ErrorBoundary from '../../components/ui/ErrorBoundary'
 import { useAuth } from '../../auth/AuthContext'
 import { useActionToast } from '../../hooks/useActionToast'
@@ -410,6 +409,19 @@ export default function MemberDebtTablePage(): JSX.Element {
     }
   }
 
+  const partnerSearch = (
+    <PartnerSearchSelect
+      partners={partners}
+      value={partnerId}
+      disabled={toolbarLocked}
+      onChange={(nextId) => {
+        setPartnerId(nextId)
+        if (nextId) navigate(`/uye-borc-tablosu/${nextId}`)
+        else navigate('/uye-borc-tablosu')
+      }}
+    />
+  )
+
   return (
     <div className="member-debt-page">
       {success && (
@@ -419,85 +431,75 @@ export default function MemberDebtTablePage(): JSX.Element {
       )}
       {error && <div className="alert alert-error">{error}</div>}
 
-      <DataPanel title="Üye Borç Tablosu" subtitle="Aidat, ödeme ve faiz takibi" noPadding>
-        <div className="member-debt-toolbar">
-          <div className="member-debt-toolbar__select">
-            <label>Üye</label>
-            <PartnerSearchSelect
-              partners={partners}
-              value={partnerId}
-              disabled={toolbarLocked}
-              onChange={(nextId) => {
-                setPartnerId(nextId)
-                if (nextId) navigate(`/uye-borc-tablosu/${nextId}`)
-                else navigate('/uye-borc-tablosu')
-              }}
-            />
-          </div>
-          <div className="member-debt-toolbar__actions">
-            <button type="button" className="btn btn-sm" onClick={() => setShowMemberModal(true)}>
-              Yeni Üye
-            </button>
-            <button
-              type="button"
-              className="btn btn-sm btn-primary"
-              onClick={() => {
-                if (!requirePartner()) return
-                setShowDueModal(true)
-              }}
-            >
-              Aidat Gir
-            </button>
-            <button
-              type="button"
-              className="btn btn-sm"
-              disabled={!canWrite}
-              onClick={() => {
-                if (!requirePartner()) return
-                setShowExtraDebtModal(true)
-              }}
-            >
-              Ek Borç Gir
-            </button>
-            <button
-              type="button"
-              className="btn btn-sm btn-accent"
-              disabled={!canWrite}
-              onClick={openPaymentModal}
-            >
-              Tahsilat
-            </button>
-            <button type="button" className="btn btn-sm" onClick={handleBackup}>
-              Yedekle
-            </button>
-          </div>
+      <div className="member-debt-page__header">
+        <div className="member-debt-page__heading">
+          <h1 className="member-debt-page__title">Üye Borç Tablosu</h1>
+          <p className="member-debt-page__subtitle">Aidat, tahsilat ve faiz dağılımını tek ekranda izleyin</p>
         </div>
+        <div className="member-debt-page__actions">
+          <button type="button" className="btn" onClick={() => setShowMemberModal(true)}>
+            Yeni Üye
+          </button>
+          <button
+            type="button"
+            className="btn"
+            disabled={!canWrite}
+            onClick={() => {
+              if (!requirePartner()) return
+              setShowExtraDebtModal(true)
+            }}
+          >
+            Ek Borç Gir
+          </button>
+          <button
+            type="button"
+            className="btn btn-soft-primary"
+            disabled={!canWrite}
+            onClick={openPaymentModal}
+          >
+            Tahsilat Al
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => {
+              if (!requirePartner()) return
+              setShowDueModal(true)
+            }}
+          >
+            + Aidat Gir
+          </button>
+        </div>
+      </div>
 
-        <ErrorBoundary title="Üye borç tablosu görüntülenemedi">
-          {selectedPartner && (
-            <div className="member-debt-member-info">
-              <MemberInfoPanel partner={selectedPartner} variant="compact" />
-            </div>
-          )}
+      <ErrorBoundary title="Üye borç tablosu görüntülenemedi">
+        {selectedPartner ? (
+          <MemberInfoPanel partner={selectedPartner} variant="hero" searchSlot={partnerSearch} />
+        ) : (
+          <div className="member-debt-empty-select">
+            <label>Üye seçin</label>
+            {partnerSearch}
+          </div>
+        )}
 
-          <MemberDebtTableView
-            report={report}
-            loading={loading}
-            canWrite={canWrite}
-            onEditRow={canWrite ? handleEditRow : undefined}
-            onDeleteRow={canWrite ? handleDeleteRow : undefined}
-            onEditExtraDebt={canWrite ? setEditExtraDebt : undefined}
-            onDeleteExtraDebt={canWrite ? handleDeleteExtraDebt : undefined}
-            onEditPayment={canWrite ? handleEditPayment : undefined}
-            onDeletePayment={canWrite ? handleDeletePayment : undefined}
-            onPreview={openPrintPreview}
-            onPrint={handlePrint}
-            onPdf={handlePdf}
-            onExcel={handleExcel}
-            onAllMembersPdf={() => setShowAllMembersPdfModal(true)}
-          />
-        </ErrorBoundary>
-      </DataPanel>
+        <MemberDebtTableView
+          report={report}
+          loading={loading}
+          canWrite={canWrite}
+          onEditRow={canWrite ? handleEditRow : undefined}
+          onDeleteRow={canWrite ? handleDeleteRow : undefined}
+          onEditExtraDebt={canWrite ? setEditExtraDebt : undefined}
+          onDeleteExtraDebt={canWrite ? handleDeleteExtraDebt : undefined}
+          onEditPayment={canWrite ? handleEditPayment : undefined}
+          onDeletePayment={canWrite ? handleDeletePayment : undefined}
+          onPreview={openPrintPreview}
+          onPrint={handlePrint}
+          onPdf={handlePdf}
+          onExcel={handleExcel}
+          onAllMembersPdf={() => setShowAllMembersPdfModal(true)}
+          onBackup={handleBackup}
+        />
+      </ErrorBoundary>
 
       {showDueModal && (
         <AddDueModal

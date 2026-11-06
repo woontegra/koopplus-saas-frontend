@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { APP_SUBTITLE } from '@shared/branding'
 import type {
   MemberDebtTableReport,
@@ -30,6 +30,7 @@ interface MemberDebtTableViewProps {
   onPdf?: () => void
   onExcel?: () => void
   onAllMembersPdf?: () => void
+  onBackup?: () => void | Promise<void>
 }
 
 type MemberDebtTab = 'debt' | 'payments' | 'planned' | 'summary'
@@ -119,6 +120,14 @@ function dueInterestAllocated(row: MemberDebtTableRow): number {
   )
 }
 
+function duePrincipalAllocated(row: MemberDebtTableRow): number {
+  if (row.paid_principal_total != null) return row.paid_principal_total
+  const onTime = row.paid_principal_on_time ?? 0
+  const late = row.paid_principal_late ?? 0
+  if (onTime > EPSILON || late > EPSILON) return onTime + late
+  return row.paid_amount ?? 0
+}
+
 function rowHasAllocationDetail(row: MemberDebtTableRow): boolean {
   return (
     !row.is_payment_only &&
@@ -135,16 +144,65 @@ function paymentSourceLabel(item: MemberPaymentHistoryItem): string {
 }
 
 function rowDisplayStatus(row: MemberDebtTableRow, asOfDate: string): string {
-  if (row.is_interest_only) return 'Aidat yok / faiz işlendi'
+  if (row.is_interest_only) return 'Faiz'
   if (row.row_status === 'not_due' || row.due_date >= asOfDate) return 'Vadesi gelmedi'
   if ((row.remaining_due ?? 0) <= EPSILON && (row.remaining_interest ?? row.delay_interest ?? 0) <= EPSILON) {
-    return row.row_status === 'closed_late' ? 'Gecikmeli kapandı' : 'Ödendi'
+    return row.row_status === 'closed_late' ? 'Geç ödendi' : 'Ödendi'
   }
-  if (row.row_status === 'partial') return 'Kısmi ödendi'
-  if (row.row_status === 'unpaid') return 'Ödenmedi'
-  if (row.row_status === 'closed_late') return 'Gecikmeli kapandı'
+  if (row.row_status === 'partial') return 'Kısmi'
+  if (row.row_status === 'unpaid') return 'Gecikmede'
+  if (row.row_status === 'closed_late') return 'Geç ödendi'
   if (row.row_status === 'closed_on_time') return 'Ödendi'
   return row.row_status_label ?? '—'
+}
+
+function rowStatusTone(row: MemberDebtTableRow, asOfDate: string): string {
+  if (row.is_interest_only) return 'not_due'
+  if (row.row_status === 'not_due' || row.due_date >= asOfDate) return 'not_due'
+  if ((row.remaining_due ?? 0) <= EPSILON && (row.remaining_interest ?? row.delay_interest ?? 0) <= EPSILON) {
+    return row.row_status === 'closed_late' ? 'late_paid' : 'paid'
+  }
+  if (row.row_status === 'partial') return 'partial'
+  if (row.row_status === 'closed_late') return 'late_paid'
+  if (row.row_status === 'closed_on_time') return 'paid'
+  return 'overdue'
+}
+
+function InfoTip({ text }: { text: string }): JSX.Element {
+  return (
+    <span className="col-info-tip" title={text} aria-label={text}>
+      ⓘ
+    </span>
+  )
+}
+
+function AllocationBar({
+  interest,
+  principal
+}: {
+  interest: number
+  principal: number
+}): JSX.Element {
+  const total = Math.max(interest + principal, 0)
+  const interestPct = total > EPSILON ? (interest / total) * 100 : 0
+  const principalPct = total > EPSILON ? (principal / total) * 100 : 0
+  return (
+    <div className="alloc-bar" aria-hidden={total <= EPSILON}>
+      <div className="alloc-bar__track">
+        {interestPct > 0 && (
+          <span className="alloc-bar__seg alloc-bar__seg--interest" style={{ width: `${interestPct}%` }} />
+        )}
+        {principalPct > 0 && (
+          <span className="alloc-bar__seg alloc-bar__seg--principal" style={{ width: `${principalPct}%` }} />
+        )}
+      </div>
+      <div className="alloc-bar__legend">
+        <span className="alloc-bar__interest">{formatMoney(interest)} faize</span>
+        <span aria-hidden> · </span>
+        <span className="alloc-bar__principal">{formatMoney(principal)} ana paraya</span>
+      </div>
+    </div>
+  )
 }
 
 export default function MemberDebtTableView({
@@ -163,16 +221,36 @@ export default function MemberDebtTableView({
   onPrint,
   onPdf,
   onExcel,
-  onAllMembersPdf
+  onAllMembersPdf,
+  onBackup
 }: MemberDebtTableViewProps): JSX.Element {
   const [activeTab, setActiveTab] = useState<MemberDebtTab>('debt')
   const [auditOpen, setAuditOpen] = useState(false)
   const [allocationRow, setAllocationRow] = useState<MemberDebtTableRow | null>(null)
-  const [periodFilter, setPeriodFilter] = useState<PeriodViewFilter>('open')
+  const [periodFilter, setPeriodFilter] = useState<PeriodViewFilter>('last12')
   const [duesPage, setDuesPage] = useState(1)
   const [paymentsExpanded, setPaymentsExpanded] = useState(false)
   const [paymentsPage, setPaymentsPage] = useState(1)
   const [plannedPage, setPlannedPage] = useState(1)
+  const [detailedView, setDetailedView] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
+  const exportRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!exportOpen) return
+    const onPointerDown = (event: MouseEvent): void => {
+      if (!exportRef.current?.contains(event.target as Node)) setExportOpen(false)
+    }
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setExportOpen(false)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [exportOpen])
 
   const partnerId = report?.partner_id ?? null
   const reportRows = report?.rows ?? []
@@ -301,7 +379,8 @@ export default function MemberDebtTableView({
   const showExtraActions = !previewMode && canWrite && (onEditExtraDebt || onDeleteExtraDebt)
   const showPaymentActions = !previewMode && canWrite && (onEditPayment || onDeletePayment)
   const showDetailColumn = !previewMode
-  const showExportActions = !previewMode && (onPreview || onPrint || onPdf || onExcel)
+  const showExportActions =
+    !previewMode && (onPreview || onPrint || onPdf || onExcel || onAllMembersPdf || onBackup)
 
   const formatTotalCell = (value: string | number | null): string => {
     if (value == null) return '—'
@@ -405,8 +484,57 @@ export default function MemberDebtTableView({
     )
   }
 
+  const remainingInterestTotal = columnTotals.totalRemainingInterest
+  const remainingPrincipalTotal = categories.allPeriodsRemainingPrincipal
+  const paidInterestTotal = interestApplied
+  const paidPrincipalTotal = principalApplied
+  const totalInterestAllocated = (report.rows ?? []).reduce(
+    (sum, row) => sum + dueInterestAllocated(row),
+    0
+  )
+  const totalPrincipalAllocated = (report.rows ?? []).reduce(
+    (sum, row) => sum + duePrincipalAllocated(row),
+    0
+  )
+  const actionColCount = showDetailColumn || showRowActions ? 1 : 0
+  const tableColSpan = 8 + actionColCount + (detailedView ? 6 : 0)
+
   return (
     <div className="member-debt-table-wrap">
+      {hasAidatRows && (
+        <div className="member-debt-kpi-grid" aria-label="Borç özeti">
+          <div className="member-debt-kpi">
+            <span className="member-debt-kpi__label">Toplam aidat</span>
+            <strong className="member-debt-kpi__value">{formatMoney(columnTotals.totalDueAmount)}</strong>
+          </div>
+          <div className="member-debt-kpi">
+            <span className="member-debt-kpi__label">Toplam ödenen</span>
+            <strong className="member-debt-kpi__value">{formatMoney(report.totals.total_paid)}</strong>
+            <AllocationBar interest={paidInterestTotal} principal={paidPrincipalTotal} />
+          </div>
+          <div className="member-debt-kpi">
+            <span className="member-debt-kpi__label">Kalan borç</span>
+            <div className="member-debt-kpi__split">
+              <div>
+                <span>Ana para</span>
+                <strong>{formatMoney(remainingPrincipalTotal)}</strong>
+              </div>
+              <div>
+                <span>Faiz</span>
+                <strong>{formatMoney(remainingInterestTotal)}</strong>
+              </div>
+            </div>
+          </div>
+          <div className="member-debt-kpi member-debt-kpi--danger">
+            <span className="member-debt-kpi__label">Bugünkü genel borç</span>
+            <strong className="member-debt-kpi__value member-debt-kpi__value--lg">
+              {formatMoney(categories.allPeriodsTotalDebt)}
+            </strong>
+            <span className="member-debt-kpi__hint">Ana para + faiz</span>
+          </div>
+        </div>
+      )}
+
       <div className="member-debt-tabs-bar">
         <div className="member-debt-tabs" role="tablist" aria-label="Üye borç tablosu bölümleri">
           {TAB_ITEMS.map((tab) => (
@@ -424,35 +552,105 @@ export default function MemberDebtTableView({
             </button>
           ))}
         </div>
-        {showExportActions && (
-          <div className="member-debt-export-actions">
-            {onPreview && (
-              <button type="button" className="btn btn-xs" onClick={onPreview}>
-                Önizle
+        <div className="member-debt-tabs-bar__right">
+          <label className="member-debt-detail-toggle">
+            <input
+              type="checkbox"
+              checked={detailedView}
+              onChange={(event) => setDetailedView(event.target.checked)}
+            />
+            <span>Detaylı görünüm</span>
+          </label>
+          {showExportActions && (
+            <div className="member-debt-export-menu" ref={exportRef}>
+              <button
+                type="button"
+                className="btn btn-xs"
+                aria-haspopup="menu"
+                aria-expanded={exportOpen}
+                onClick={() => setExportOpen((value) => !value)}
+              >
+                Yazdır / Dışa aktar ▾
               </button>
-            )}
-            {onPrint && (
-              <button type="button" className="btn btn-xs" onClick={onPrint}>
-                Yazdır
-              </button>
-            )}
-            {onPdf && (
-              <button type="button" className="btn btn-xs" onClick={onPdf}>
-                PDF Al
-              </button>
-            )}
-            {onExcel && (
-              <button type="button" className="btn btn-xs" onClick={onExcel}>
-                Excel&apos;e Aktar
-              </button>
-            )}
-            {onAllMembersPdf && (
-              <button type="button" className="btn btn-xs" onClick={onAllMembersPdf}>
-                Tüm Üyeler PDF
-              </button>
-            )}
-          </div>
-        )}
+              {exportOpen && (
+                <div className="member-debt-export-menu__panel" role="menu">
+                  {onPreview && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setExportOpen(false)
+                        onPreview()
+                      }}
+                    >
+                      Önizle
+                    </button>
+                  )}
+                  {onPrint && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setExportOpen(false)
+                        void onPrint()
+                      }}
+                    >
+                      Yazdır
+                    </button>
+                  )}
+                  {onPdf && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setExportOpen(false)
+                        void onPdf()
+                      }}
+                    >
+                      PDF indir
+                    </button>
+                  )}
+                  {onExcel && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setExportOpen(false)
+                        void onExcel()
+                      }}
+                    >
+                      Excel&apos;e aktar
+                    </button>
+                  )}
+                  {onAllMembersPdf && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setExportOpen(false)
+                        onAllMembersPdf()
+                      }}
+                    >
+                      Tüm üyeler PDF
+                    </button>
+                  )}
+                  {onBackup && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setExportOpen(false)
+                        void onBackup()
+                      }}
+                    >
+                      Yedekle
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="member-debt-tab-panel" role="tabpanel">
@@ -538,14 +736,6 @@ export default function MemberDebtTableView({
             )}
 
             {hasAidatRows && (
-              <div className="member-debt-allocation-note" role="note">
-                Gerçek Tahsilat, paranın kasaya girdiği ayı gösterir. Faize Mahsup, Vadesinde Mahsup
-                ve Sonradan Mahsup kolonları ise bu tutarın hangi aidat döneminin faizine veya ana
-                parasına işlendiğini gösterir.
-              </div>
-            )}
-
-            {hasAidatRows && (
               <div className="member-debt-period-filters" role="toolbar" aria-label="Dönem görünümü">
                 {filterOptions.map((option) => (
                   <button
@@ -559,54 +749,65 @@ export default function MemberDebtTableView({
                     {option.label}
                   </button>
                 ))}
-                <span className="member-debt-period-filters__meta">
+                <span className="member-debt-period-filters__rule">
+                  Ödemeler önce birikmiş faize, kalanı en eski aidatın ana parasına işlenir ·{' '}
                   {filteredRows.length} dönem
-                  {filteredRows.length > DUES_PAGE_SIZE
-                    ? ` · sayfa ${safeDuesPage}/${duesTotalPages}`
-                    : ''}
                 </span>
               </div>
             )}
 
             {hasAidatRows && (
               <div className="table-wrap table-wrap--scroll member-debt-table-scroll">
-                <table className="data-table member-debt-table member-debt-table--detailed">
+                <table
+                  className={`data-table member-debt-table${
+                    detailedView ? ' member-debt-table--detailed' : ' member-debt-table--simple'
+                  }`}
+                >
                   <thead>
                     <tr>
                       <th className="member-debt-table__sticky-col">Dönem</th>
-                      <th className="member-debt-table__sticky-col-2">Son Ödeme Tarihi</th>
+                      <th className="member-debt-table__sticky-col-2">Son ödeme</th>
                       <th className="text-right">Aidat</th>
                       <th
                         className="text-right"
-                        title="Bu kolonda, ödeme tarihinde kasaya giren tutar gösterilir. Hangi dönemin faizine veya ana parasına gittiği Faize Mahsup, Vadesinde Mahsup ve Sonradan Mahsup kolonlarındadır."
+                        title="Ödeme tarihinde kasaya giren tutar. Dağılım Faize giden / Ana paraya giden kolonlarındadır."
                       >
-                        Gerçek Tahsilat
+                        Tahsilat <InfoTip text="Kasaya giren tutar; hangi döneme işlendiği yan kolonlardadır." />
                       </th>
-                      <th className="text-right">Vadesinde Mahsup</th>
-                      <th className="text-right">Sonradan Mahsup</th>
                       <th
-                        className="text-right"
-                        title="Bu aidat döneminin gecikme faizine işlenen tutar. Kasa ayından farklı olabilir."
+                        className="text-right money-interest"
+                        title="Bu aidat döneminin gecikme faizine işlenen tutar."
                       >
-                        Faize Mahsup
+                        Faize giden <InfoTip text="Bu dönemin faizine mahsup edilen tutar." />
                       </th>
-                      <th className="text-right">Dönem Faizi</th>
-                      <th className="text-right">Devreden Faiz</th>
-                      <th className="text-right">Dönem Sonu Kalan Faiz</th>
-                      <th>Kapanış Tarihi</th>
+                      <th
+                        className="text-right money-principal"
+                        title="Vadesinde ve sonradan ana paraya mahsup toplamı."
+                      >
+                        Ana paraya giden{' '}
+                        <InfoTip text="Vadesinde + sonradan mahsup edilen ana para toplamı." />
+                      </th>
+                      {detailedView && (
+                        <>
+                          <th className="text-right">Vadesinde mahsup</th>
+                          <th className="text-right">Sonradan mahsup</th>
+                          <th className="text-right">Dönem faizi</th>
+                          <th className="text-right">Devreden faiz</th>
+                          <th className="text-right">Dönem sonu kalan faiz</th>
+                          <th>Kapanış tarihi</th>
+                        </>
+                      )}
+                      <th className="text-right">Kalan</th>
                       <th>Durum</th>
-                      {showDetailColumn && <th className="text-center">Mahsup Detayı</th>}
-                      {showRowActions && (
-                        <th className="text-center member-debt-table__actions-col">İşlem</th>
+                      {(showDetailColumn || showRowActions) && (
+                        <th className="text-center member-debt-table__actions-col">Detay / İşlem</th>
                       )}
                     </tr>
                   </thead>
                   <tbody>
                     {pagedRows.length === 0 ? (
                       <tr>
-                        <td colSpan={showRowActions ? 13 : showDetailColumn ? 12 : 11}>
-                          Seçilen görünümde dönem satırı yok.
-                        </td>
+                        <td colSpan={tableColSpan}>Seçilen görünümde dönem satırı yok.</td>
                       </tr>
                     ) : (
                       pagedRows.map((row) => (
@@ -638,101 +839,116 @@ export default function MemberDebtTableView({
                           <td className="money credit text-right">
                             {formatMoney(row.month_collection ?? 0)}
                           </td>
-                          <td className="money credit text-right">
-                            {row.is_interest_only
-                              ? '—'
-                              : (row.paid_principal_on_time ?? 0) > 0
-                                ? formatMoney(row.paid_principal_on_time!)
-                                : '—'}
-                          </td>
-                          <td className="money credit text-right">
-                            {row.is_interest_only
-                              ? '—'
-                              : (row.paid_principal_late ?? 0) > 0
-                                ? formatMoney(row.paid_principal_late!)
-                                : '—'}
-                          </td>
-                          <td className="money credit text-right">
+                          <td className="money text-right money-interest">
                             {row.is_interest_only
                               ? '—'
                               : dueInterestAllocated(row) > EPSILON
                                 ? formatMoney(dueInterestAllocated(row))
                                 : '—'}
                           </td>
-                          <td className="money text-right">
-                            {formatMoney(row.accrued_interest_total ?? 0)}
+                          <td className="money text-right money-principal">
+                            {row.is_interest_only
+                              ? '—'
+                              : duePrincipalAllocated(row) > EPSILON
+                                ? formatMoney(duePrincipalAllocated(row))
+                                : '—'}
                           </td>
-                          <td className="money debit text-right">
-                            {openingInterestByPeriod.has(`${row.period_year}-${row.period_month}`)
-                              ? formatMoney(
-                                  openingInterestByPeriod.get(
-                                    `${row.period_year}-${row.period_month}`
-                                  ) ?? 0
+                          {detailedView && (
+                            <>
+                              <td className="money credit text-right">
+                                {row.is_interest_only
+                                  ? '—'
+                                  : (row.paid_principal_on_time ?? 0) > 0
+                                    ? formatMoney(row.paid_principal_on_time!)
+                                    : '—'}
+                              </td>
+                              <td className="money credit text-right">
+                                {row.is_interest_only
+                                  ? '—'
+                                  : (row.paid_principal_late ?? 0) > 0
+                                    ? formatMoney(row.paid_principal_late!)
+                                    : '—'}
+                              </td>
+                              <td className="money text-right">
+                                {formatMoney(row.accrued_interest_total ?? 0)}
+                              </td>
+                              <td className="money debit text-right">
+                                {openingInterestByPeriod.has(
+                                  `${row.period_year}-${row.period_month}`
                                 )
-                              : '—'}
-                          </td>
+                                  ? formatMoney(
+                                      openingInterestByPeriod.get(
+                                        `${row.period_year}-${row.period_month}`
+                                      ) ?? 0
+                                    )
+                                  : '—'}
+                              </td>
+                              <td className="money debit text-right">
+                                {formatMoney(row.remaining_interest ?? row.delay_interest)}
+                              </td>
+                              <td>{row.closing_date ? formatDate(row.closing_date) : '—'}</td>
+                            </>
+                          )}
                           <td className="money debit text-right">
-                            {formatMoney(row.remaining_interest ?? row.delay_interest)}
+                            {row.is_interest_only ? '—' : formatMoney(row.remaining_due)}
                           </td>
-                          <td>{row.closing_date ? formatDate(row.closing_date) : '—'}</td>
                           <td>
                             <span
-                              className={`member-debt-status member-debt-status--${row.row_status ?? 'unpaid'}`}
+                              className={`member-debt-status member-debt-status--${rowStatusTone(
+                                row,
+                                report.as_of_date
+                              )}`}
                             >
                               {rowDisplayStatus(row, report.as_of_date)}
                             </span>
                           </td>
-                          {showDetailColumn && (
-                            <td className="text-center">
-                              {rowHasAllocationDetail(row) ? (
-                                <button
-                                  type="button"
-                                  className="btn btn-xs"
-                                  onClick={() => setAllocationRow(row)}
-                                >
-                                  Detay
-                                </button>
-                              ) : (
-                                '—'
-                              )}
-                            </td>
-                          )}
-                          {showRowActions && isPrincipalDebtRow(row) && (
+                          {(showDetailColumn || showRowActions) && (
                             <td className="text-center">
                               <div className="member-debt-row-actions">
-                                <button
-                                  type="button"
-                                  className="btn btn-xs"
-                                  onClick={() => onEditRow?.(row)}
-                                  disabled={!row.can_edit}
-                                >
-                                  Düzenle
-                                </button>
-                                <button
-                                  type="button"
-                                  className="btn btn-xs btn-danger-outline"
-                                  onClick={() => onDeleteRow?.(row)}
-                                  disabled={!row.can_delete}
-                                >
-                                  Sil
-                                </button>
-                              </div>
-                            </td>
-                          )}
-                          {showRowActions && row.is_interest_only && (
-                            <td className="text-center">—</td>
-                          )}
-                          {showRowActions && row.is_payment_only && (
-                            <td className="text-center">
-                              <div className="member-debt-row-actions">
-                                <button
-                                  type="button"
-                                  className="btn btn-xs btn-danger-outline"
-                                  onClick={() => onDeleteRow?.(row)}
-                                  disabled={!canWrite}
-                                >
-                                  Ödemeyi Sil
-                                </button>
+                                {showDetailColumn &&
+                                  (rowHasAllocationDetail(row) ? (
+                                    <button
+                                      type="button"
+                                      className="btn btn-xs"
+                                      onClick={() => setAllocationRow(row)}
+                                    >
+                                      Detay
+                                    </button>
+                                  ) : null)}
+                                {showRowActions && isPrincipalDebtRow(row) && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="btn btn-xs"
+                                      onClick={() => onEditRow?.(row)}
+                                      disabled={!row.can_edit}
+                                    >
+                                      Düzenle
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn btn-xs btn-danger-outline"
+                                      onClick={() => onDeleteRow?.(row)}
+                                      disabled={!row.can_delete}
+                                    >
+                                      Sil
+                                    </button>
+                                  </>
+                                )}
+                                {showRowActions && row.is_payment_only && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-xs btn-danger-outline"
+                                    onClick={() => onDeleteRow?.(row)}
+                                    disabled={!canWrite}
+                                  >
+                                    Ödemeyi Sil
+                                  </button>
+                                )}
+                                {showRowActions &&
+                                  row.is_interest_only &&
+                                  !rowHasAllocationDetail(row) &&
+                                  '—'}
                               </div>
                             </td>
                           )}
@@ -740,50 +956,61 @@ export default function MemberDebtTableView({
                       ))
                     )}
                   </tbody>
-                  <tfoot>
-                    <tr className="member-debt-table__totals">
-                      <td className="member-debt-table__sticky-col">
-                        <strong>{formatTotalCell(displaySummary.totalRowCells.period)}</strong>
-                      </td>
-                      <td className="member-debt-table__sticky-col-2">—</td>
-                      <td className="money debit text-right">
-                        <strong>{formatTotalCell(displaySummary.totalRowCells.due)}</strong>
-                      </td>
-                      <td className="money credit text-right">
-                        <strong>{formatMoney(report.totals.total_paid)}</strong>
-                      </td>
-                      <td className="money credit text-right">
-                        <strong>{formatTotalCell(displaySummary.totalRowCells.paidOnTime)}</strong>
-                      </td>
-                      <td className="money credit text-right">
-                        <strong>{formatTotalCell(displaySummary.totalRowCells.paidLate)}</strong>
-                      </td>
-                      <td className="money credit text-right">
-                        <strong>
-                          {formatMoney(
-                            (report.rows ?? []).reduce((sum, row) => sum + dueInterestAllocated(row), 0)
-                          )}
-                        </strong>
-                      </td>
-                      <td className="money text-right">
-                        <strong>
-                          {formatTotalCell(displaySummary.totalRowCells.accruedInterest)}
-                        </strong>
-                      </td>
-                      <td className="money text-right">—</td>
-                      <td className="money debit text-right">
-                        <strong>
-                          {formatTotalCell(displaySummary.totalRowCells.remainingInterest)}
-                        </strong>
-                      </td>
-                      <td>{formatTotalCell(displaySummary.totalRowCells.closingDate)}</td>
-                      <td>
-                        <strong>{formatTotalCell(displaySummary.totalRowCells.status)}</strong>
-                      </td>
-                      {showDetailColumn && <td />}
-                      {showRowActions && <td />}
-                    </tr>
-                  </tfoot>
+                  {pagedRows.length > 0 && (
+                    <tfoot>
+                      <tr className="member-debt-table__totals">
+                        <td className="member-debt-table__sticky-col">
+                          <strong>{formatTotalCell(displaySummary.totalRowCells.period)}</strong>
+                        </td>
+                        <td className="member-debt-table__sticky-col-2">—</td>
+                        <td className="money debit text-right">
+                          <strong>{formatTotalCell(displaySummary.totalRowCells.due)}</strong>
+                        </td>
+                        <td className="money credit text-right">
+                          <strong>{formatMoney(report.totals.total_paid)}</strong>
+                        </td>
+                        <td className="money text-right money-interest">
+                          <strong>{formatMoney(totalInterestAllocated)}</strong>
+                        </td>
+                        <td className="money text-right money-principal">
+                          <strong>{formatMoney(totalPrincipalAllocated)}</strong>
+                        </td>
+                        {detailedView && (
+                          <>
+                            <td className="money credit text-right">
+                              <strong>
+                                {formatTotalCell(displaySummary.totalRowCells.paidOnTime)}
+                              </strong>
+                            </td>
+                            <td className="money credit text-right">
+                              <strong>
+                                {formatTotalCell(displaySummary.totalRowCells.paidLate)}
+                              </strong>
+                            </td>
+                            <td className="money text-right">
+                              <strong>
+                                {formatTotalCell(displaySummary.totalRowCells.accruedInterest)}
+                              </strong>
+                            </td>
+                            <td className="money text-right">—</td>
+                            <td className="money debit text-right">
+                              <strong>
+                                {formatTotalCell(displaySummary.totalRowCells.remainingInterest)}
+                              </strong>
+                            </td>
+                            <td>{formatTotalCell(displaySummary.totalRowCells.closingDate)}</td>
+                          </>
+                        )}
+                        <td className="money debit text-right">
+                          <strong>{formatMoney(remainingPrincipalTotal)}</strong>
+                        </td>
+                        <td>
+                          <strong>{formatTotalCell(displaySummary.totalRowCells.status)}</strong>
+                        </td>
+                        {(showDetailColumn || showRowActions) && <td />}
+                      </tr>
+                    </tfoot>
+                  )}
                 </table>
               </div>
             )}
@@ -809,52 +1036,6 @@ export default function MemberDebtTableView({
                 >
                   Sonraki
                 </button>
-              </div>
-            )}
-
-            {hasAidatRows && (
-              <div
-                className="member-debt-due-summary member-debt-due-summary--compact"
-                role="region"
-                aria-label="Borç Özeti"
-              >
-                <div className="member-debt-due-summary__title">Borç Özeti</div>
-                <div className="member-debt-due-summary__grid">
-                  <div>
-                    <span>Toplam Aidat</span>
-                    <strong>{formatMoney(columnTotals.totalDueAmount)}</strong>
-                  </div>
-                  <div>
-                    <span>Toplam Gerçek Tahsilat</span>
-                    <strong>{formatMoney(report.totals.total_paid)}</strong>
-                  </div>
-                  <div>
-                    <span>Ana Paraya Mahsup Edilen</span>
-                    <strong>{formatMoney(columnTotals.totalPaidPrincipal)}</strong>
-                  </div>
-                  <div>
-                    <span>Faize Mahsup Edilen</span>
-                    <strong>{formatMoney(columnTotals.totalPaidInterest)}</strong>
-                  </div>
-                  <div>
-                    <span>Kalan Ana Para</span>
-                    <strong>{formatMoney(categories.allPeriodsRemainingPrincipal)}</strong>
-                  </div>
-                  <div>
-                    <span>Kalan Faiz</span>
-                    <strong>{formatMoney(columnTotals.totalRemainingInterest)}</strong>
-                  </div>
-                  {(report.totals.carried_forward_credit ?? 0) > EPSILON && (
-                    <div>
-                      <span>Devreden Alacak</span>
-                      <strong>{formatMoney(report.totals.carried_forward_credit ?? 0)}</strong>
-                    </div>
-                  )}
-                  <div>
-                    <span>Bugünkü Genel Borç</span>
-                    <strong>{formatMoney(categories.allPeriodsTotalDebt)}</strong>
-                  </div>
-                </div>
               </div>
             )}
 
@@ -927,6 +1108,7 @@ export default function MemberDebtTableView({
               report={report}
               canDelete={Boolean(showPaymentActions)}
               onDelete={onDeletePayment}
+              onEdit={onEditPayment}
             />
 
           </>

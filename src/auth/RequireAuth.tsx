@@ -1,9 +1,10 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import ForcePasswordChange from '../components/auth/ForcePasswordChange'
+import LicenseActivation from '../components/auth/LicenseActivation'
 import { useAuth } from './AuthContext'
 
 export default function RequireAuth({ children }: { children: JSX.Element }): JSX.Element {
-  const { ready, bootError, token, user, retryBootstrap, logout } = useAuth()
+  const { ready, bootError, token, user, memberships, tenantId, retryBootstrap, logout } = useAuth()
   const location = useLocation()
 
   if (!ready) {
@@ -42,6 +43,24 @@ export default function RequireAuth({ children }: { children: JSX.Element }): JS
 
   if (user.mustChangePassword) {
     return <ForcePasswordChange />
+  }
+
+  // Platform paneli lisans kilidine tabi değil.
+  const onPlatform = location.pathname.startsWith('/platform')
+  if (!onPlatform && !user.isPlatformAdmin) {
+    const pendingAdmin = memberships.filter(
+      (m) => m.role === 'ADMIN' && (m.tenant.licensePending || !m.tenant.licenseActivatedAt)
+    )
+    const activated = memberships.filter(
+      (m) => !(m.tenant.licensePending || !m.tenant.licenseActivatedAt)
+    )
+    const currentPending =
+      !!tenantId && pendingAdmin.some((m) => m.tenantId === tenantId)
+    const mustActivate =
+      pendingAdmin.length > 0 && (activated.length === 0 || currentPending || !tenantId)
+    if (mustActivate) {
+      return <LicenseActivation />
+    }
   }
 
   return children

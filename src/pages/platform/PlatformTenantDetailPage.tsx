@@ -28,7 +28,7 @@ import {
   useEnterSupport
 } from './platformUi'
 
-type DetailTab = 'general' | 'users' | 'extensions' | 'logins' | 'critical'
+type DetailTab = 'general' | 'users' | 'extensions' | 'logins' | 'critical' | 'emails'
 
 type Dialog = 'extend' | 'status' | 'backup' | 'restore' | 'delete' | null
 
@@ -41,6 +41,136 @@ const EMPTY_SETTINGS: PlatformTenantSettings = {
   address: '',
   city: '',
   district: ''
+}
+
+/* ------------------------------ Lisans kutusu ------------------------------ */
+
+function LicensePanel({ tenant, onChanged }: { tenant: PlatformTenantDetail; onChanged: () => void }): JSX.Element {
+  const toast = useActionToast()
+  const [busy, setBusy] = useState(false)
+  const activated = Boolean(tenant.licenseActivatedAt)
+
+  const copyKey = async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(tenant.licenseKey)
+      toast.success('Kopyalandı', 'Lisans anahtarı panoya alındı.')
+    } catch {
+      toast.fail('Kopyalanamadı', 'Tarayıcı panoya izin vermedi.')
+    }
+  }
+
+  const regenerate = async (): Promise<void> => {
+    if (
+      !window.confirm(
+        'Yeni lisans anahtarı üretilecek; eski anahtar geçersiz olur ve kooperatif yeniden etkinleştirme bekler. Devam?'
+      )
+    ) {
+      return
+    }
+    setBusy(true)
+    try {
+      await platformApi.regenerateLicense(tenant.id)
+      toast.success('Yeni anahtar üretildi', 'Eski anahtar geçersiz.')
+      onChanged()
+    } catch (err) {
+      toast.fail('Anahtar üretilemedi', platformErrorMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const resend = async (): Promise<void> => {
+    setBusy(true)
+    try {
+      const res = await platformApi.resendWelcomeEmail(tenant.id)
+      if (res.email.ok) {
+        toast.success('E-posta gönderildi', res.admin.email)
+      } else {
+        toast.warn(
+          'E-posta gönderilemedi',
+          `${res.email.error || 'SMTP hatası'}${
+            res.admin.temporaryPassword ? ` · Geçici şifre: ${res.admin.temporaryPassword}` : ''
+          }`
+        )
+      }
+      onChanged()
+    } catch (err) {
+      toast.fail('Gönderilemedi', platformErrorMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <DataPanel
+      title="Lisans"
+      actions={
+        <>
+          <button type="button" className="btn btn-sm" disabled={busy} onClick={() => void copyKey()}>
+            Kopyala
+          </button>
+          <button type="button" className="btn btn-sm" disabled={busy} onClick={() => void regenerate()}>
+            Yeni anahtar üret
+          </button>
+          <button type="button" className="btn btn-sm btn-soft-primary" disabled={busy} onClick={() => void resend()}>
+            Hoş geldin e-postasını yeniden gönder
+          </button>
+        </>
+      }
+    >
+      <div className="form-grid form-grid--2">
+        <div className="form-group form-group--wide">
+          <label>Lisans anahtarı</label>
+          <code style={{ fontSize: 14 }}>{tenant.licenseKey}</code>
+        </div>
+        <div className="form-group">
+          <label>Durum</label>
+          <div>
+            {activated ? (
+              <Badge tone="green">Etkinleştirildi · {formatDateTime(tenant.licenseActivatedAt)}</Badge>
+            ) : (
+              <Badge tone="yellow">Bekliyor</Badge>
+            )}
+          </div>
+        </div>
+      </div>
+    </DataPanel>
+  )
+}
+
+function EmailsTab({ tenant }: { tenant: PlatformTenantDetail }): JSX.Element {
+  const rows = tenant.emailLogs ?? []
+  if (rows.length === 0) return <EmptyState message="Henüz e-posta kaydı yok." compact />
+  return (
+    <DataPanel title="E-posta kayıtları">
+      <div className="table-wrap">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Tarih</th>
+              <th>Kime</th>
+              <th>Tür</th>
+              <th>Konu</th>
+              <th>Durum</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id}>
+                <td>{formatDateTime(r.createdAt)}</td>
+                <td>{r.toEmail}</td>
+                <td>{r.kind}</td>
+                <td>{r.subject}</td>
+                <td title={r.error ?? undefined}>
+                  {r.success ? <Badge tone="green">Başarılı</Badge> : <Badge tone="red">Başarısız</Badge>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </DataPanel>
+  )
 }
 
 /* ------------------------------ Genel sekmesi ------------------------------ */
@@ -87,7 +217,9 @@ function GeneralTab({ tenant, onSaved }: { tenant: PlatformTenantDetail; onSaved
   }
 
   return (
-    <div className="pf-grid-2">
+    <div className="pf-stack" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <LicensePanel tenant={tenant} onChanged={onSaved} />
+      <div className="pf-grid-2">
       <DataPanel
         title="Kooperatif Bilgileri"
         actions={
@@ -149,6 +281,7 @@ function GeneralTab({ tenant, onSaved }: { tenant: PlatformTenantDetail; onSaved
           </div>
         </div>
       </DataPanel>
+      </div>
     </div>
   )
 }
@@ -509,7 +642,8 @@ export default function PlatformTenantDetailPage(): JSX.Element {
           { key: 'users', label: 'Kullanıcılar' },
           { key: 'extensions', label: 'Süre Geçmişi' },
           { key: 'logins', label: 'Giriş Geçmişi' },
-          { key: 'critical', label: 'Kritik Loglar' }
+          { key: 'critical', label: 'Kritik Loglar' },
+          { key: 'emails', label: 'E-postalar' }
         ]}
         active={tab}
         onChange={setTab}
@@ -520,6 +654,7 @@ export default function PlatformTenantDetailPage(): JSX.Element {
       {tab === 'extensions' && <ExtensionsTab tenantId={tenant.id} reloadKey={reloadKey} />}
       {tab === 'logins' && <LoginsTab tenantId={tenant.id} />}
       {tab === 'critical' && <CriticalTab tenantId={tenant.id} />}
+      {tab === 'emails' && <EmailsTab tenant={tenant} />}
 
       {dialog === 'extend' && <ExtendModal tenant={tenant} onClose={() => setDialog(null)} onSaved={() => void load()} />}
       {dialog === 'status' && <StatusModal tenant={tenant} onClose={() => setDialog(null)} onSaved={() => void load()} />}

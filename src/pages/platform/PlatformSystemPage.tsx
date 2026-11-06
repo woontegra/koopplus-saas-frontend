@@ -22,6 +22,8 @@ export default function PlatformSystemPage(): JSX.Element {
   const [error, setError] = useState('')
   const [pdfBusy, setPdfBusy] = useState(false)
   const [pdf, setPdf] = useState<PlatformPdfProbe | null>(null)
+  const [testTo, setTestTo] = useState('')
+  const [mailBusy, setMailBusy] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -50,6 +52,24 @@ export default function PlatformSystemPage(): JSX.Element {
       toast.fail('PDF testi başarısız', platformErrorMessage(err))
     } finally {
       setPdfBusy(false)
+    }
+  }
+
+  const sendTestMail = async (): Promise<void> => {
+    if (!testTo.trim() || !testTo.includes('@')) {
+      toast.fail('Alıcı gerekli', 'Geçerli bir e-posta yazın.')
+      return
+    }
+    setMailBusy(true)
+    try {
+      const res = await platformApi.sendTestEmail(testTo.trim())
+      if (res.ok) toast.success('Test e-postası', `${testTo} adresine gönderildi.`)
+      else toast.fail('SMTP hatası', res.error || 'Gönderilemedi')
+      await load()
+    } catch (err) {
+      toast.fail('Test e-postası başarısız', platformErrorMessage(err))
+    } finally {
+      setMailBusy(false)
     }
   }
 
@@ -104,6 +124,14 @@ export default function PlatformSystemPage(): JSX.Element {
                 <OkBadge ok={health.pdf.ok} />
               </div>
             </div>
+            <div className="stat-panel stat-panel--hero">
+              <div className="stat-panel__head">
+                <span className="stat-panel__label">SMTP</span>
+              </div>
+              <div className="pf-stat-badges">
+                <OkBadge ok={Boolean(health.smtp?.ok)} />
+              </div>
+            </div>
             <StatPanel size="hero" label="Çalışma Süresi" value={formatUptime(health.server.uptimeSec)} />
             <StatPanel size="hero" label="Veritabanı Boyutu" value={formatBytes(health.database.sizeBytes)} />
             <StatPanel
@@ -148,6 +176,46 @@ export default function PlatformSystemPage(): JSX.Element {
               </dl>
             </DataPanel>
           </div>
+
+          <DataPanel title="SMTP durumu">
+            <dl className="profile-info">
+              <dt>Yapılandırma</dt>
+              <dd>{health.smtp?.configured ? 'Tanımlı' : 'Eksik'}</dd>
+              <dt>Durum</dt>
+              <dd>
+                <OkBadge ok={Boolean(health.smtp?.ok)} />
+              </dd>
+              <dt>Host</dt>
+              <dd className="cell-mono">{health.smtp?.host ?? '—'}</dd>
+              <dt>Port / Secure</dt>
+              <dd>
+                {health.smtp?.port ?? '—'} / {health.smtp?.secure ? 'evet' : 'hayır'}
+              </dd>
+              <dt>From</dt>
+              <dd>{health.smtp?.from ?? '—'}</dd>
+              <dt>Hata</dt>
+              <dd>{health.smtp?.error || '—'}</dd>
+            </dl>
+            <div className="form-grid" style={{ marginTop: 12, alignItems: 'end' }}>
+              <div className="form-group">
+                <label>Test e-postası alıcısı</label>
+                <input
+                  type="email"
+                  value={testTo}
+                  onChange={(e) => setTestTo(e.target.value)}
+                  placeholder="ornek@firma.com"
+                />
+              </div>
+              <button
+                type="button"
+                className="btn btn-sm btn-primary"
+                disabled={mailBusy}
+                onClick={() => void sendTestMail()}
+              >
+                {mailBusy ? 'Gönderiliyor...' : 'Test e-postası gönder'}
+              </button>
+            </div>
+          </DataPanel>
         </>
       )}
     </div>

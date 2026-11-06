@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { Partner } from '@shared/types'
 import { formatShareRatioTr, resolveShareRatio } from '@shared/shareRatio'
 import StatusBadge from '../ui/StatusBadge'
@@ -6,7 +7,8 @@ import { entityNoLabel } from '../../utils/entityLabels'
 
 interface MemberInfoPanelProps {
   partner: Partner
-  variant?: 'compact' | 'full'
+  variant?: 'compact' | 'full' | 'hero'
+  searchSlot?: ReactNode
 }
 
 function displayValue(value: string | null | undefined): string {
@@ -20,12 +22,58 @@ function cityDistrict(partner: Partner): string {
   return city || district || '—'
 }
 
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toLocaleUpperCase('tr-TR')
+  return `${parts[0]!.charAt(0)}${parts[parts.length - 1]!.charAt(0)}`.toLocaleUpperCase('tr-TR')
+}
+
 export default function MemberInfoPanel({
   partner,
-  variant = 'compact'
+  variant = 'compact',
+  searchSlot
 }: MemberInfoPanelProps): JSX.Element {
   const shareRatio = resolveShareRatio(partner.share_ratio, partner.share_count)
   const shareRatioLabel = formatShareRatioTr(shareRatio)
+
+  if (variant === 'hero') {
+    return (
+      <div className="member-hero-card">
+        <div className="member-hero-card__main">
+          <div className="member-hero-card__avatar" aria-hidden>
+            {initials(partner.full_name)}
+          </div>
+          <div className="member-hero-card__body">
+            <div className="member-hero-card__title-row">
+              <h2 className="member-hero-card__name">{partner.full_name}</h2>
+              <StatusBadge active={partner.is_active === 1} />
+            </div>
+            <div className="member-hero-card__meta">
+              <span>
+                {entityNoLabel} {partner.partner_no}
+              </span>
+              <span className="member-hero-card__dot" aria-hidden>
+                ·
+              </span>
+              <span>Pay oranı {shareRatioLabel}</span>
+              <span className="member-hero-card__dot" aria-hidden>
+                ·
+              </span>
+              <span>
+                Giriş {partner.join_date ? formatDate(partner.join_date) : '—'}
+              </span>
+              <span className="member-hero-card__dot" aria-hidden>
+                ·
+              </span>
+              <span>{displayValue(partner.phone)}</span>
+            </div>
+          </div>
+        </div>
+        {searchSlot ? <div className="member-hero-card__search">{searchSlot}</div> : null}
+      </div>
+    )
+  }
 
   if (variant === 'compact') {
     return (
