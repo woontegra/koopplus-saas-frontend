@@ -59,3 +59,75 @@ export function formatMoneyInputFromNumber(value: number): string {
     maximumFractionDigits: 2
   })
 }
+
+// ---- Desktop KoopPlus helpers (copied from renderer/utils/format.ts; todayISO already defined above) ----
+export const MONTH_NAMES = [
+  'Ocak',
+  'Şubat',
+  'Mart',
+  'Nisan',
+  'Mayıs',
+  'Haziran',
+  'Temmuz',
+  'Ağustos',
+  'Eylül',
+  'Ekim',
+  'Kasım',
+  'Aralık'
+]
+
+export function formatMonthYear(month: number, year: number): string {
+  return `${MONTH_NAMES[month - 1] ?? month} ${year}`
+}
+
+export function computeDueDate(year: number, month: number, lastPaymentDay: number): string {
+  const day = Math.min(Math.max(lastPaymentDay, 1), 28)
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+export function formatMoney(amount: number): string {
+  const formatted = new Intl.NumberFormat('tr-TR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(Math.abs(amount))
+
+  const prefix = amount < 0 ? '-' : ''
+  return `${prefix}${formatted} ₺`
+}
+
+export function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  if (Number.isNaN(date.getTime())) return dateStr
+  return date.toLocaleDateString('tr-TR')
+}
+
+export function formatPeriod(year: number | null, month: number | null): string {
+  if (!year || !month) return '-'
+  return `${String(month).padStart(2, '0')}/${year}`
+}
+
+export function formatPeriodRange(
+  startYear: number,
+  startMonth: number,
+  endYear: number,
+  endMonth: number
+): string {
+  const start = formatPeriod(startYear, startMonth)
+  const end = formatPeriod(endYear, endMonth)
+  if (start === '-' || end === '-') return '-'
+  return start === end ? start : `${start} - ${end}`
+}
+
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+}
+
+export function formatDateTime(dateStr: string | null | undefined): string {
+  if (!dateStr || dateStr === 'Henüz yedek alınmadı') return dateStr || '—'
+  const date = new Date(dateStr)
+  if (Number.isNaN(date.getTime())) return dateStr
+  return date.toLocaleString('tr-TR')
+}

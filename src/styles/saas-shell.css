@@ -1,0 +1,118 @@
+/* SaaS kabuk sınıfları — masaüstü global.css (sidebar__item) üzerine uyumluluk */
+
+.sidebar__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--kat-text-inverse-muted);
+  text-decoration: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sidebar__link:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--kat-text-inverse);
+}
+
+.sidebar__link--active {
+  background: rgba(37, 99, 235, 0.22);
+  color: #fff;
+}
+
+.sidebar__link-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.sidebar__logo,
+.sidebar__logo-mark,
+.sidebar__logo-text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sidebar__logo-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--kat-primary);
+  color: #fff;
+  font-weight: 800;
+  justify-content: center;
+}
+
+.sidebar__logo-text {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.sidebar__logo-text strong {
+  color: #fff;
+  font-size: 15px;
+}
+
+.sidebar__logo-text span {
+  color: var(--kat-text-inverse-muted);
+  font-size: 11px;
+}
+
+.sidebar__close {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.sidebar-overlay {
+  display: none;
+}
+
+.app-shell--nav-open .sidebar-overlay {
+  display: block;
+  position: fixed;
+  inset: 0;
+  border: none;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 40;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    transform: translateX(-105%);
+    z-index: 50;
+    transition: transform 0.2s ease;
+  }
+
+  .sidebar--open {
+    transform: translateX(0);
+  }
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}

@@ -4,8 +4,8 @@ import { useAuth } from '../../auth/AuthContext'
 import { canSeeAdminOnly, roleLabel } from '../../auth/roles'
 import { navGroups, pageTitles } from '../../config/navigation'
 import MemberDebtTablePage from '../../pages/MemberDebtTablePage'
-import MemberDetailPage from '../../pages/MemberDetailPage'
-import MembersPage from '../../pages/MembersPage'
+import SimpleMemberDetailPage from '../../pages/member/SimpleMemberDetailPage'
+import SimpleMembersPage from '../../pages/member/SimpleMembersPage'
 import PlaceholderPage from '../../pages/PlaceholderPage'
 import AppHeader from './AppHeader'
 
@@ -166,8 +166,8 @@ export default function AppShell(): JSX.Element {
           <div className="workspace__content">
             <Routes>
               <Route path="/" element={<PlaceholderPage title="Yönetim Paneli" />} />
-              <Route path="/uyeler" element={<MembersPage />} />
-              <Route path="/uyeler/:id" element={<MemberDetailPage />} />
+              <Route path="/uyeler" element={<SimpleMembersPage />} />
+              <Route path="/uyeler/:id" element={<SimpleMemberDetailPage />} />
               <Route path="/uye-borc-tablosu" element={<MemberDebtTablePage />} />
               <Route path="/uye-borc-tablosu/:partnerId" element={<MemberDebtTablePage />} />
               <Route path="*" element={<PlaceholderPage title={pageTitle} />} />

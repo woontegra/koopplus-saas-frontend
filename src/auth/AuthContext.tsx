@@ -32,6 +32,12 @@ type AuthContextValue = {
   activeMembership: AuthMembership | null
   activeRole: MembershipRole | null
   rememberedEmail: string | null
+  /** Masaüstü uyumluluğu: ADMIN | STAFF yazabilir */
+  canWrite: boolean
+  /** Masaüstü uyumluluğu: yalnızca ADMIN */
+  isAdmin: boolean
+  canManageInterest: boolean
+  canManageUsers: boolean
   retryBootstrap: () => Promise<void>
   login: (email: string, password: string, remember: boolean) => Promise<void>
   logout: () => Promise<void>
@@ -170,6 +176,10 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     [memberships, tenantId]
   )
 
+  const activeRole = activeMembership?.role ?? null
+  const isAdmin = activeRole === 'ADMIN'
+  const canWrite = activeRole === 'ADMIN' || activeRole === 'STAFF'
+
   const value = useMemo<AuthContextValue>(
     () => ({
       ready,
@@ -179,8 +189,12 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       memberships,
       tenantId,
       activeMembership,
-      activeRole: activeMembership?.role ?? null,
+      activeRole,
       rememberedEmail,
+      canWrite,
+      isAdmin,
+      canManageInterest: isAdmin,
+      canManageUsers: isAdmin,
       retryBootstrap: bootstrapSession,
       login,
       logout,
@@ -195,6 +209,9 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       memberships,
       tenantId,
       activeMembership,
+      activeRole,
+      canWrite,
+      isAdmin,
       rememberedEmail,
       bootstrapSession,
       login,

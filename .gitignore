@@ -13,3 +13,7 @@ coverage/
 .idea/
 .vscode/
 *.tsbuildinfo
+
+.backup-pre-members/
+_test_out.txt
+

@@ -1,8 +1,13 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
+import { installWindowApi } from './desktopApi/installWindowApi'
 import './styles/tokens.css'
 import './styles/global.css'
+import './styles/saas-auth.css'
+import './styles/saas-shell.css'
+
+installWindowApi()
 
 const root = document.getElementById('root')
 if (!root) {
