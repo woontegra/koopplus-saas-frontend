@@ -1,11 +1,21 @@
 import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
+import { useAuth } from '../../auth/AuthContext'
+import { canSeeAdminOnly, roleLabel } from '../../auth/roles'
 import { navGroups, pageTitles } from '../../config/navigation'
-import AppHeader from './AppHeader'
 import PlaceholderPage from '../../pages/PlaceholderPage'
+import AppHeader from './AppHeader'
 
 export default function AppShell(): JSX.Element {
   const location = useLocation()
+  const { activeRole, activeMembership, user } = useAuth()
   const pageTitle = pageTitles[location.pathname] ?? 'KoopPlus'
+
+  const visibleGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.adminOnly || canSeeAdminOnly(activeRole))
+    }))
+    .filter((group) => group.items.length > 0)
 
   return (
     <div className="app-shell">
@@ -21,7 +31,7 @@ export default function AppShell(): JSX.Element {
         </div>
 
         <nav className="sidebar__nav">
-          {navGroups.map((group) => (
+          {visibleGroups.map((group) => (
             <div key={group.title} className="sidebar__group">
               <div className="sidebar__group-title">{group.title}</div>
               <ul className="sidebar__list">
@@ -45,6 +55,13 @@ export default function AppShell(): JSX.Element {
         </nav>
 
         <div className="sidebar__footer">
+          <div className="sidebar__user">
+            <strong>{user?.fullName ?? 'Kullanıcı'}</strong>
+            <span className="sidebar__user-role">
+              {activeRole ? roleLabel(activeRole) : '—'}
+              {activeMembership ? ` · ${activeMembership.tenant.name}` : ''}
+            </span>
+          </div>
           <span>Woontegra</span>
         </div>
       </aside>
