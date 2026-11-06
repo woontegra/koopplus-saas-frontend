@@ -74,9 +74,9 @@ function AppRoutes(): JSX.Element {
   )
 }
 
-function TenantApp(): JSX.Element {
+export default function App(): JSX.Element {
   return (
-    <>
+    <BrowserRouter>
       <AuthProvider>
         <DialogProvider>
           <ToastProvider>
@@ -86,6 +86,14 @@ function TenantApp(): JSX.Element {
               <CooperativeProvider>
                 <Routes>
                   <Route path="/login" element={<LoginPage />} />
+                  <Route
+                    path="/platform/*"
+                    element={
+                      <RequireAuth>
+                        <PlatformApp />
+                      </RequireAuth>
+                    }
+                  />
                   <Route
                     path="/kooperatifler"
                     element={
@@ -112,27 +120,6 @@ function TenantApp(): JSX.Element {
           </ToastProvider>
         </DialogProvider>
       </AuthProvider>
-    </>
-  )
-}
-
-/** /platform/* tenant AuthProvider'dan bağımsız; ayrı platform JWT. */
-export default function App(): JSX.Element {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route
-          path="/platform/*"
-          element={
-            <DialogProvider>
-              <ToastProvider>
-                <PlatformApp />
-              </ToastProvider>
-            </DialogProvider>
-          }
-        />
-        <Route path="*" element={<TenantApp />} />
-      </Routes>
     </BrowserRouter>
   )
 }

@@ -8,6 +8,8 @@ export type AuthUser = {
   has_security_question?: boolean
   /** Platform tarafından verilen geçici şifre — uygulamaya girmeden değiştirilmeli. */
   mustChangePassword?: boolean
+  /** Platform süper admin (User.isPlatformAdmin) — kooperatif ADMIN'den bağımsız. */
+  isPlatformAdmin?: boolean
 }
 
 export type AuthMembership = {

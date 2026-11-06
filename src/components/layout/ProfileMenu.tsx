@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { roleLabel, useAuth } from '../../auth/AuthContext'
 import { useAskDialog } from '../../hooks/useAskDialog'
 import { useActionToast } from '../../hooks/useActionToast'
@@ -13,6 +14,7 @@ type ModalKind = 'profile' | 'usage' | 'password' | 'users' | null
 /** AppHeader sağ üst — kullanıcı adına tıklayınca açılan profil menüsü. */
 export default function ProfileMenu(): JSX.Element | null {
   const { user, memberships, activeMembership, canManageUsers, logout } = useAuth()
+  const navigate = useNavigate()
   const ask = useAskDialog()
   const toast = useActionToast()
   const [open, setOpen] = useState(false)
@@ -90,6 +92,19 @@ export default function ProfileMenu(): JSX.Element | null {
           {canManageUsers && (
             <button type="button" role="menuitem" className="profile-menu__item" onClick={() => pick('users')}>
               Kullanıcılar ve yetkiler
+            </button>
+          )}
+          {user.isPlatformAdmin && (
+            <button
+              type="button"
+              role="menuitem"
+              className="profile-menu__item"
+              onClick={() => {
+                setOpen(false)
+                navigate('/platform')
+              }}
+            >
+              Platform Paneli
             </button>
           )}
           <button

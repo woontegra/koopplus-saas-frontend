@@ -1,29 +1,10 @@
 /**
- * Platform paneli API istemcisi — /api/platform/*
- * Yalnız platform JWT (koopplus.saas.platformToken) kullanılır; tenant token asla gönderilmez.
- *
- * SÖZLEŞME (backend paralel yazılıyor; farklıysa yalnız bu dosya uyarlanır):
- *   POST   /api/platform/login                          {email,password} → {token, admin}
- *   GET    /api/platform/me                             → {admin}
- *   GET    /api/platform/summary                        → PlatformSummary
- *   GET    /api/platform/tenants?search=&status=        → PlatformTenant[]
- *   POST   /api/platform/tenants                        {name, usageExpiresAt?, admin:{fullName,email,password}}
- *   POST   /api/platform/tenants/demo                   {name, days, admin:{...}}
- *   PATCH  /api/platform/tenants/:id/status             {status}
- *   PATCH  /api/platform/tenants/:id/usage-expiry       {usageExpiresAt: ISO|null}
- *   DELETE /api/platform/tenants/:id                    {confirmName}   (yalnız ARCHIVED)
- *   GET    /api/platform/tenants/:id/users              → PlatformTenantUser[]
- *   POST   /api/platform/tenants/:id/users              {fullName,email,password,role,mustChangePassword?}
- *   PATCH  /api/platform/tenants/:id/users/:userId      {fullName?,email?,role?,isActive?}
- *   POST   /api/platform/tenants/:id/users/:userId/password {newPassword, mustChangePassword?}
- *   POST   /api/platform/tenants/:id/impersonate        → {token, tenantId, tenantName?}
- *   POST   /api/platform/tenants/:id/backup             {password?} → dosya (blob)
- *   POST   /api/platform/tenants/:id/restore            {fileName,contentBase64,password?,documentsZipBase64?} → {job_id?}|sonuç
- *   GET    /api/platform/audit?limit=                   → PlatformAuditEntry[]
+ * Platform paneli API — /api/platform/*
+ * Aynı oturum JWT (loadToken); yetki User.isPlatformAdmin ile sunucuda doğrulanır.
  */
 import { ApiError, apiRequest } from '../api/client'
 import { apiUrl } from '../api/config'
-import { loadPlatformToken } from './platformSession'
+import { loadToken } from '../auth/session'
 
 export type PlatformTenantStatus = 'ACTIVE' | 'SUSPENDED' | 'ARCHIVED'
 
@@ -77,18 +58,11 @@ export type PlatformAuditEntry = {
 export type NewTenantAdmin = { fullName: string; email: string; password: string }
 
 function req<T>(path: string, method: string, body?: unknown): Promise<T> {
-  return apiRequest<T>(path, { method, body, token: loadPlatformToken() })
+  return apiRequest<T>(path, { method, body, token: loadToken() })
 }
 
-export async function platformLogin(
-  email: string,
-  password: string
-): Promise<{ token: string; admin: PlatformAdmin }> {
-  return apiRequest('/api/platform/login', { method: 'POST', body: { email, password } })
-}
-
-export function platformMe(token: string): Promise<{ admin: PlatformAdmin }> {
-  return apiRequest('/api/platform/me', { method: 'GET', token })
+export function platformMe(token?: string | null): Promise<{ admin: PlatformAdmin }> {
+  return apiRequest('/api/platform/me', { method: 'GET', token: token ?? loadToken() })
 }
 
 export const platformApi = {
@@ -229,7 +203,7 @@ export async function platformDownloadBackup(
   tenantId: string,
   password?: string
 ): Promise<{ blob: Blob; fileName: string }> {
-  const token = loadPlatformToken()
+  const token = loadToken()
   let response: Response
   try {
     response = await fetch(apiUrl(`/api/platform/tenants/${encodeURIComponent(tenantId)}/backup`), {

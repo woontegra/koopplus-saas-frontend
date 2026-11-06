@@ -1,13 +1,28 @@
 ﻿import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../auth/AuthContext'
 import BrandLogo from '../../components/layout/BrandLogo'
 import { IconLogout } from '../../components/ui/icons'
-import { PlatformAuthProvider, RequirePlatform, usePlatformAuth } from '../../platform/PlatformAuthContext'
 import PlatformDashboardPage from './PlatformDashboardPage'
-import PlatformLoginPage from './PlatformLoginPage'
 
 function PlatformShell(): JSX.Element {
-  const { admin, logout } = usePlatformAuth()
+  const { user, logout, tenantId, memberships } = useAuth()
   const navigate = useNavigate()
+
+  const backToCoop = (): void => {
+    if (tenantId) {
+      navigate('/', { replace: true })
+      return
+    }
+    if (memberships.length > 1) {
+      navigate('/kooperatifler', { replace: true })
+      return
+    }
+    if (memberships.length === 1) {
+      navigate('/', { replace: true })
+      return
+    }
+    navigate('/kooperatifler', { replace: true })
+  }
 
   return (
     <div className="platform-shell">
@@ -18,15 +33,17 @@ function PlatformShell(): JSX.Element {
         </div>
         <div className="platform-header__user">
           <div className="platform-header__user-meta">
-            <strong>{admin?.fullName}</strong>
-            <span>{admin?.email}</span>
+            <strong>{user?.full_name}</strong>
+            <span>{user?.email}</span>
           </div>
+          <button type="button" className="btn btn-sm" onClick={backToCoop}>
+            Kooperatif ekranı
+          </button>
           <button
             type="button"
             className="btn btn-sm"
             onClick={() => {
-              logout()
-              navigate('/platform/login', { replace: true })
+              void logout().then(() => navigate('/login', { replace: true }))
             }}
           >
             <IconLogout size={14} /> Çıkış
@@ -43,21 +60,11 @@ function PlatformShell(): JSX.Element {
   )
 }
 
-/** /platform/* — tenant uygulamasından ayrı; yalnız platform JWT. */
+/** /platform/* — aynı oturum JWT; yalnız isPlatformAdmin. */
 export default function PlatformApp(): JSX.Element {
-  return (
-    <PlatformAuthProvider>
-      <Routes>
-        <Route path="/login" element={<PlatformLoginPage />} />
-        <Route
-          path="/*"
-          element={
-            <RequirePlatform>
-              <PlatformShell />
-            </RequirePlatform>
-          }
-        />
-      </Routes>
-    </PlatformAuthProvider>
-  )
+  const { user } = useAuth()
+  if (!user?.isPlatformAdmin) {
+    return <Navigate to="/" replace />
+  }
+  return <PlatformShell />
 }
