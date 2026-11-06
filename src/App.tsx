@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext'
+import AdminRoute from './auth/AdminRoute'
 import RequireAuth from './auth/RequireAuth'
 import RequireTenant from './auth/RequireTenant'
 import AppLayout from './components/layout/AppLayout'
@@ -12,12 +13,13 @@ import ProgressBar from './progress/ProgressBar'
 import ProgressBridge from './progress/ProgressBridge'
 import { ProgressProvider } from './progress/ProgressContext'
 import LoginPage from './pages/LoginPage'
+import InterestPage from './pages/interest/InterestPage'
 import MemberDebtTablePage from './pages/member/MemberDebtTablePage'
 import SimpleMemberDetailPage from './pages/member/SimpleMemberDetailPage'
 import SimpleMembersPage from './pages/member/SimpleMembersPage'
 import PlaceholderPage from './pages/PlaceholderPage'
 import TenantSelectPage from './pages/TenantSelectPage'
-import { getPageTitle } from './config/navigation'
+import { getPageTitle, SIMPLIFIED_UI } from './config/navigation'
 
 function RoutePlaceholder(): JSX.Element {
   const { pathname } = useLocation()
@@ -36,6 +38,18 @@ function AppRoutes(): JSX.Element {
               <Route path="/uyeler/:id" element={<SimpleMemberDetailPage />} />
               <Route path="/uye-borc-tablosu" element={<MemberDebtTablePage />} />
               <Route path="/uye-borc-tablosu/:partnerId" element={<MemberDebtTablePage />} />
+              <Route
+                path="/faiz-isletme"
+                element={
+                  SIMPLIFIED_UI ? (
+                    <AdminRoute>
+                      <InterestPage />
+                    </AdminRoute>
+                  ) : (
+                    <InterestPage />
+                  )
+                }
+              />
               <Route path="*" element={<RoutePlaceholder />} />
             </Route>
           </Routes>

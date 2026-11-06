@@ -1,4 +1,4 @@
-import type { Settings } from '@shared/types'
+import type { ActivePeriod, Settings } from '@shared/types'
 import { partnersDesktopApi } from './partnersDesktopApi'
 import {
   backupDesktopApi,
@@ -7,6 +7,7 @@ import {
   memberExtraDebtsDesktopApi,
   reportsDesktopApi
 } from './debtDesktopApi'
+import { interestDesktopApi, interestPoliciesDesktopApi } from './interestDesktopApi'
 
 type ApiResult<T = void> = { success: boolean; data?: T; error?: string }
 
@@ -57,11 +58,20 @@ export function installWindowApi(): void {
     partners: partnersDesktopApi,
     memberDebtTable: memberDebtTableDesktopApi,
     memberExtraDebts: memberExtraDebtsDesktopApi,
+    interest: interestDesktopApi,
+    interestPolicies: interestPoliciesDesktopApi,
     reports: reportsDesktopApi,
     documents: documentsDesktopApi,
     backup: backupDesktopApi,
     settings: {
-      get: getSettings
+      get: getSettings,
+      getActivePeriod: async (): Promise<ApiResult<ActivePeriod>> => {
+        const res = await getSettings()
+        if (!res.success || !res.data) return { success: false, error: res.error }
+        const year = Number(res.data.active_period_year) || new Date().getFullYear()
+        const month = Number(res.data.active_period_month) || new Date().getMonth() + 1
+        return { success: true, data: { year, month } }
+      }
     },
     update: {
       rendererReady: async (): Promise<ApiResult<void>> => ({ success: true })
@@ -88,11 +98,14 @@ declare global {
       partners: typeof partnersDesktopApi
       memberDebtTable: typeof memberDebtTableDesktopApi
       memberExtraDebts: typeof memberExtraDebtsDesktopApi
+      interest: typeof interestDesktopApi
+      interestPolicies: typeof interestPoliciesDesktopApi
       reports: typeof reportsDesktopApi
       documents: typeof documentsDesktopApi
       backup: typeof backupDesktopApi
       settings: {
         get: () => Promise<ApiResult<Settings>>
+        getActivePeriod: () => Promise<ApiResult<ActivePeriod>>
       }
       update: {
         rendererReady: () => Promise<ApiResult<void>>
