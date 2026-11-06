@@ -283,9 +283,10 @@ export const partnersDesktopApi = {
       let existing: string | number | null | undefined = row.existing_partner_id
       if (typeof existing === 'number') {
         const cuid = toCuid(tenantId, existing)
-        existing = cuid ?? existing
+        // Eşleme yoksa null bırak; backend UPDATE’te partner_no ile bulur.
+        existing = cuid
       }
-      return { ...row, existing_partner_id: existing }
+      return { ...row, existing_partner_id: existing ?? null }
     })
 
     const started = await desktopRequest<{ job_id: string; total: number }>(
