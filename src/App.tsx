@@ -19,6 +19,8 @@ import AidatDistributionPage from './pages/member/AidatDistributionPage'
 import MemberDebtTablePage from './pages/member/MemberDebtTablePage'
 import SimpleMemberDetailPage from './pages/member/SimpleMemberDetailPage'
 import SimpleMembersPage from './pages/member/SimpleMembersPage'
+import BankTransactionsPage from './pages/bank/BankTransactionsPage'
+import ReportsPage from './pages/reports/ReportsPage'
 import PlaceholderPage from './pages/PlaceholderPage'
 import TenantSelectPage from './pages/TenantSelectPage'
 import { getPageTitle, SIMPLIFIED_UI } from './config/navigation'
@@ -54,6 +56,8 @@ function AppRoutes(): JSX.Element {
               />
               <Route path="/aidat-dagitim" element={<AidatDistributionPage />} />
               <Route path="/kooperatif-kasasi" element={<CooperativeCashPage />} />
+              <Route path="/banka-hareketleri" element={<BankTransactionsPage />} />
+              <Route path="/raporlar" element={<ReportsPage />} />
               <Route path="*" element={<RoutePlaceholder />} />
             </Route>
           </Routes>

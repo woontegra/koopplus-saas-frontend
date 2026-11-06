@@ -2,9 +2,17 @@
  * Üye Borç Tablosu window.api santrali — masaüstü IPC yüzeyi → SaaS REST.
  */
 import type {
+  AccrualReportFilters,
+  AccrualReportResult,
   ApiResult,
   BackupCreateResult,
+  DebtorPartnersFilters,
+  DebtorPartnersReport,
   DocumentPdfResult,
+  GeneralBalanceFilters,
+  GeneralBalanceReport,
+  InterestReportFilters,
+  InterestReportResult,
   ManualLedgerCreateResult,
   ManualLedgerDeleteResult,
   MemberDuePayload,
@@ -18,9 +26,20 @@ import type {
   MemberPaymentDeleteOptions,
   MemberPaymentPayload,
   MemberPaymentUpdatePayload,
+  NonPayingFilters,
+  NonPayingReport,
+  PartnerDebtScheduleFilters,
+  PartnerDebtScheduleReport,
+  PartnerLedgerFilters,
+  PartnerLedgerReport,
   PaymentCreateResult,
-  ReportExportResult
+  PaymentReportFilters,
+  PaymentReportResult,
+  ReportExportResult,
+  ReportFilters,
+  ReportType
 } from '@shared/types'
+import type { MemberAccountStatement } from '@shared/partnerStatementModels'
 import type {
   AllMembersDebtPdfPreview,
   AllMembersDebtTablePdfOptions
@@ -333,7 +352,125 @@ export const memberExtraDebtsDesktopApi = {
   }
 }
 
+function mapPartnerIdInFilters<T extends { partner_id?: number | null }>(
+  tenantId: string,
+  filters: T
+): ApiResult<T> {
+  if (filters.partner_id == null) return { success: true, data: filters }
+  const partner = resolvePartnerCuid(tenantId, filters.partner_id)
+  if (!partner.success || !partner.data) return { success: false, error: partner.error }
+  return {
+    success: true,
+    data: { ...filters, partner_id: partner.data as unknown as number }
+  }
+}
+
 export const reportsDesktopApi = {
+  async generalBalance(
+    filters: GeneralBalanceFilters
+  ): Promise<ApiResult<GeneralBalanceReport>> {
+    return desktopRequest('/api/reports/general-balance', { method: 'POST', body: filters })
+  },
+
+  async debtorPartners(
+    filters: DebtorPartnersFilters
+  ): Promise<ApiResult<DebtorPartnersReport>> {
+    return desktopRequest('/api/reports/debtor-partners', { method: 'POST', body: filters })
+  },
+
+  async nonPayingPartners(filters: NonPayingFilters): Promise<ApiResult<NonPayingReport>> {
+    return desktopRequest('/api/reports/non-paying', { method: 'POST', body: filters })
+  },
+
+  async accrualReport(filters: AccrualReportFilters): Promise<ApiResult<AccrualReportResult>> {
+    return desktopRequest('/api/reports/accrual', { method: 'POST', body: filters })
+  },
+
+  async paymentReport(filters: PaymentReportFilters): Promise<ApiResult<PaymentReportResult>> {
+    return desktopRequest('/api/reports/payment', { method: 'POST', body: filters })
+  },
+
+  async interestReport(
+    filters: InterestReportFilters
+  ): Promise<ApiResult<InterestReportResult>> {
+    return desktopRequest('/api/reports/interest', { method: 'POST', body: filters })
+  },
+
+  async partnerLedger(
+    filters: PartnerLedgerFilters
+  ): Promise<ApiResult<PartnerLedgerReport>> {
+    const auth = authTenant()
+    if (!auth.success || !auth.data) return { success: false, error: auth.error }
+    const mapped = mapPartnerIdInFilters(auth.data.tenantId, filters)
+    if (!mapped.success || !mapped.data) return { success: false, error: mapped.error }
+    const res = await desktopRequest<PartnerLedgerReport>('/api/reports/partner-ledger', {
+      method: 'POST',
+      body: mapped.data
+    })
+    if (!res.success || !res.data) return res
+    return { success: true, data: res.data }
+  },
+
+  async memberStatement(payload: {
+    partner_id: number
+    date_from?: string | null
+    date_to?: string | null
+  }): Promise<ApiResult<MemberAccountStatement>> {
+    const auth = authTenant()
+    if (!auth.success || !auth.data) return { success: false, error: auth.error }
+    const partner = resolvePartnerCuid(auth.data.tenantId, payload.partner_id)
+    if (!partner.success || !partner.data) return { success: false, error: partner.error }
+    const res = await desktopRequest<MemberAccountStatement>('/api/reports/member-statement', {
+      method: 'POST',
+      body: { ...payload, partner_id: partner.data }
+    })
+    if (!res.success || !res.data) return res
+    return {
+      success: true,
+      data: {
+        ...res.data,
+        partner_id: toNumericId(auth.data.tenantId, String(res.data.partner_id))
+      }
+    }
+  },
+
+  async partnerDebtSchedule(
+    filters: PartnerDebtScheduleFilters
+  ): Promise<ApiResult<PartnerDebtScheduleReport>> {
+    const auth = authTenant()
+    if (!auth.success || !auth.data) return { success: false, error: auth.error }
+    const mapped = mapPartnerIdInFilters(auth.data.tenantId, filters)
+    if (!mapped.success || !mapped.data) return { success: false, error: mapped.error }
+    const res = await desktopRequest<PartnerDebtScheduleReport>(
+      '/api/reports/partner-debt-schedule',
+      { method: 'POST', body: mapped.data }
+    )
+    if (!res.success || !res.data) return res
+    return {
+      success: true,
+      data: {
+        ...res.data,
+        partner_id: toNumericId(auth.data.tenantId, String(res.data.partner_id))
+      }
+    }
+  },
+
+  async exportPartnerDebtScheduleExcel(
+    filters: PartnerDebtScheduleFilters
+  ): Promise<ApiResult<ReportExportResult>> {
+    const auth = authTenant()
+    if (!auth.success || !auth.data) return { success: false, error: auth.error }
+    const mapped = mapPartnerIdInFilters(auth.data.tenantId, filters)
+    if (!mapped.success || !mapped.data) return { success: false, error: mapped.error }
+    const res = await downloadViaApi('/api/reports/partner-debt-schedule/export', {
+      method: 'POST',
+      body: mapped.data,
+      fallbackName: 'uye-borc-cetveli.xlsx'
+    })
+    if (!res.success || !res.data) return { success: false, error: res.error }
+    return { success: true, data: { file_path: res.data.file_path } }
+  },
+
   async exportMemberDebtTableExcel(partnerId: number): Promise<ApiResult<ReportExportResult>> {
     const auth = authTenant()
     if (!auth.success || !auth.data) return { success: false, error: auth.error }
@@ -346,6 +483,46 @@ export const reportsDesktopApi = {
     })
     if (!res.success || !res.data) return { success: false, error: res.error }
     return { success: true, data: { file_path: res.data.file_path } }
+  },
+
+  async exportExcel(
+    reportType: ReportType,
+    filters: ReportFilters
+  ): Promise<ApiResult<ReportExportResult>> {
+    const auth = authTenant()
+    if (!auth.success || !auth.data) return { success: false, error: auth.error }
+    const mapped = mapPartnerIdInFilters(
+      auth.data.tenantId,
+      filters as { partner_id?: number | null }
+    )
+    if (!mapped.success || !mapped.data) return { success: false, error: mapped.error }
+    const res = await downloadViaApi('/api/reports/export-excel', {
+      method: 'POST',
+      body: { reportType, filters: mapped.data },
+      fallbackName: `${reportType}.xlsx`
+    })
+    if (!res.success || !res.data) return { success: false, error: res.error }
+    return { success: true, data: { file_path: res.data.file_path } }
+  }
+}
+
+async function pdfDownload(
+  path: string,
+  body: unknown,
+  fallbackName: string
+): Promise<ApiResult<DocumentPdfResult>> {
+  const res = await downloadViaApi(path, {
+    method: 'POST',
+    body,
+    fallbackName
+  })
+  if (!res.success || !res.data) return { success: false, error: res.error }
+  return {
+    success: true,
+    data: {
+      file_path: res.data.file_path,
+      default_file_name: res.data.default_file_name ?? res.data.file_path
+    }
   }
 }
 
@@ -405,6 +582,91 @@ export const documentsDesktopApi = {
         default_file_name: res.data.default_file_name ?? res.data.file_path
       }
     }
+  },
+
+  async savePartnerLedgerPdf(
+    filters: PartnerLedgerFilters
+  ): Promise<ApiResult<DocumentPdfResult>> {
+    const auth = authTenant()
+    if (!auth.success || !auth.data) return { success: false, error: auth.error }
+    const mapped = mapPartnerIdInFilters(auth.data.tenantId, filters)
+    if (!mapped.success || !mapped.data) return { success: false, error: mapped.error }
+    return pdfDownload('/api/documents/partner-ledger-pdf', mapped.data, 'cari-ekstre.pdf')
+  },
+
+  async createPartnerLedgerPdf(
+    filters: PartnerLedgerFilters
+  ): Promise<ApiResult<DocumentPdfResult>> {
+    return documentsDesktopApi.savePartnerLedgerPdf(filters)
+  },
+
+  async savePartnerLedgerSummaryPdf(
+    filters: PartnerLedgerFilters
+  ): Promise<ApiResult<DocumentPdfResult>> {
+    const auth = authTenant()
+    if (!auth.success || !auth.data) return { success: false, error: auth.error }
+    const mapped = mapPartnerIdInFilters(auth.data.tenantId, filters)
+    if (!mapped.success || !mapped.data) return { success: false, error: mapped.error }
+    return pdfDownload(
+      '/api/documents/partner-ledger-summary-pdf',
+      mapped.data,
+      'cari-ozet.pdf'
+    )
+  },
+
+  async saveInterestReportPdf(
+    filters: InterestReportFilters
+  ): Promise<ApiResult<DocumentPdfResult>> {
+    return pdfDownload('/api/documents/interest-report-pdf', filters, 'faiz-raporu.pdf')
+  },
+
+  async saveMemberStatementPdf(payload: {
+    partner_id?: number | null
+    all_members?: boolean
+    date_from?: string | null
+    date_to?: string | null
+  }): Promise<ApiResult<DocumentPdfResult>> {
+    const auth = authTenant()
+    if (!auth.success || !auth.data) return { success: false, error: auth.error }
+    if (payload.all_members || payload.partner_id == null) {
+      return { success: false, error: 'Toplu üye hesap ekstresi PDF henüz desteklenmiyor.' }
+    }
+    const partner = resolvePartnerCuid(auth.data.tenantId, payload.partner_id)
+    if (!partner.success || !partner.data) return { success: false, error: partner.error }
+    return pdfDownload(
+      '/api/documents/member-statement-pdf',
+      { ...payload, partner_id: partner.data },
+      'uye-hesap-ekstresi.pdf'
+    )
+  },
+
+  async savePartnerDebtSchedulePdf(
+    filters: PartnerDebtScheduleFilters
+  ): Promise<ApiResult<DocumentPdfResult>> {
+    const auth = authTenant()
+    if (!auth.success || !auth.data) return { success: false, error: auth.error }
+    const mapped = mapPartnerIdInFilters(auth.data.tenantId, filters)
+    if (!mapped.success || !mapped.data) return { success: false, error: mapped.error }
+    return pdfDownload(
+      '/api/documents/partner-debt-schedule-pdf',
+      mapped.data,
+      'uye-borc-cetveli.pdf'
+    )
+  },
+
+  async printPartnerDebtSchedule(
+    filters: PartnerDebtScheduleFilters
+  ): Promise<ApiResult<DocumentPdfResult>> {
+    const auth = authTenant()
+    if (!auth.success || !auth.data) return { success: false, error: auth.error }
+    const mapped = mapPartnerIdInFilters(auth.data.tenantId, filters)
+    if (!mapped.success || !mapped.data) return { success: false, error: mapped.error }
+    const htmlRes = await fetchText('/api/documents/partner-debt-schedule-print-html', {
+      method: 'POST',
+      body: mapped.data
+    })
+    if (!htmlRes.success || !htmlRes.data) return { success: false, error: htmlRes.error }
+    return openPrintHtml(htmlRes.data)
   }
 }
 
