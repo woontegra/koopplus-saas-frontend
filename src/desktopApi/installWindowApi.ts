@@ -1,5 +1,12 @@
 import type { Settings } from '@shared/types'
 import { partnersDesktopApi } from './partnersDesktopApi'
+import {
+  backupDesktopApi,
+  documentsDesktopApi,
+  memberDebtTableDesktopApi,
+  memberExtraDebtsDesktopApi,
+  reportsDesktopApi
+} from './debtDesktopApi'
 
 type ApiResult<T = void> = { success: boolean; data?: T; error?: string }
 
@@ -41,13 +48,18 @@ async function getSettings(): Promise<ApiResult<Settings>> {
 
 /**
  * Masaüstü preload `window.api` yüzeyi.
- * Üyeler modülü partners.* kullanır; diğer namespace'ler güvenli stub.
+ * Üyeler + Üye Borç Tablosu namespace'leri bağlı; diğerleri güvenli stub.
  */
 export function installWindowApi(): void {
   if (typeof window === 'undefined') return
 
   const api = {
     partners: partnersDesktopApi,
+    memberDebtTable: memberDebtTableDesktopApi,
+    memberExtraDebts: memberExtraDebtsDesktopApi,
+    reports: reportsDesktopApi,
+    documents: documentsDesktopApi,
+    backup: backupDesktopApi,
     settings: {
       get: getSettings
     },
@@ -74,6 +86,11 @@ declare global {
   interface Window {
     api: {
       partners: typeof partnersDesktopApi
+      memberDebtTable: typeof memberDebtTableDesktopApi
+      memberExtraDebts: typeof memberExtraDebtsDesktopApi
+      reports: typeof reportsDesktopApi
+      documents: typeof documentsDesktopApi
+      backup: typeof backupDesktopApi
       settings: {
         get: () => Promise<ApiResult<Settings>>
       }

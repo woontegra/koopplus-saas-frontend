@@ -1,66 +1,89 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { PartnerListItem } from '../../api/types'
+import type { Partner } from '@shared/types'
+import { filterPartnersBySearch } from '@shared/searchText'
 
-type Props = {
-  partners: PartnerListItem[]
-  value: string
-  onChange: (partnerId: string) => void
+interface PartnerSearchSelectProps {
+  partners: Partner[]
+  value: number | ''
+  onChange: (partnerId: number | '') => void
   disabled?: boolean
   placeholder?: string
+  compact?: boolean
+  allowEmpty?: boolean
+  emptyLabel?: string
+  id?: string
 }
 
-function partnerLabel(partner: PartnerListItem): string {
-  return `${partner.partnerNo} — ${partner.fullName}`
+interface DropdownCoords {
+  top: number
+  left: number
+  width: number
 }
 
-function matches(partner: PartnerListItem, query: string): boolean {
-  const q = query.trim().toLocaleLowerCase('tr-TR')
-  if (!q) return true
-  return (
-    partner.partnerNo.toLocaleLowerCase('tr-TR').includes(q) ||
-    partner.fullName.toLocaleLowerCase('tr-TR').includes(q)
-  )
+function partnerLabel(partner: Partner): string {
+  return `${partner.partner_no} — ${partner.full_name}`
 }
 
-const MAX_VISIBLE = 50
-const DROPDOWN_Z = 10050
+/** Açılır listede aynı anda gösterilecek en fazla kayıt (performans için). */
+const MAX_VISIBLE_OPTIONS = 50
+
+/** Modal overlay (5000) ve nested stacking context üstünde görünmeli. */
+const DROPDOWN_LAYER_Z_INDEX = 10050
 
 export default function PartnerSearchSelect({
   partners,
   value,
   onChange,
   disabled = false,
-  placeholder = 'Üye no, ad soyad ile ara...'
-}: Props): JSX.Element {
+  placeholder = 'Üye no, ad soyad veya TC ile ara...',
+  compact = false,
+  allowEmpty = true,
+  emptyLabel = 'Seçin...',
+  id
+}: PartnerSearchSelectProps): JSX.Element {
   const listId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
-  const [highlight, setHighlight] = useState(0)
-  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 })
+  const [highlightIndex, setHighlightIndex] = useState(0)
+  const [coords, setCoords] = useState<DropdownCoords>({ top: 0, left: 0, width: 0 })
 
-  const selected = useMemo(
-    () => partners.find((p) => p.id === value) ?? null,
+  const selectedPartner = useMemo(
+    () => partners.find((partner) => partner.id === value) ?? null,
     [partners, value]
   )
 
-  const filtered = useMemo(() => partners.filter((p) => matches(p, query)), [partners, query])
-  const visible = useMemo(() => filtered.slice(0, MAX_VISIBLE), [filtered])
+  const filtered = useMemo(() => {
+    const trimmed = query.trim()
+    if (!trimmed) return partners
+    return filterPartnersBySearch(partners, trimmed)
+  }, [partners, query])
 
-  useEffect(() => {
-    if (selected && !open) setQuery(partnerLabel(selected))
-    if (!selected && !open) setQuery('')
-  }, [selected, open])
+  const visible = useMemo(() => filtered.slice(0, MAX_VISIBLE_OPTIONS), [filtered])
+  const hiddenCount = filtered.length - visible.length
 
   const updateCoords = (): void => {
-    const el = inputRef.current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    setCoords({ top: rect.bottom + 2, left: rect.left, width: rect.width })
+    const input = inputRef.current
+    if (!input) return
+    const rect = input.getBoundingClientRect()
+    setCoords({
+      top: rect.bottom + 2,
+      left: rect.left,
+      width: rect.width
+    })
   }
+
+  useEffect(() => {
+    if (!open) return
+    setHighlightIndex(0)
+  }, [query, open])
+
+  useEffect(() => {
+    if (disabled) setOpen(false)
+  }, [disabled])
 
   useLayoutEffect(() => {
     if (!open || disabled) return
@@ -69,146 +92,172 @@ export default function PartnerSearchSelect({
 
   useEffect(() => {
     if (!open || disabled) return
-    const reposition = (): void => updateCoords()
-    window.addEventListener('resize', reposition)
-    window.addEventListener('scroll', reposition, true)
+
+    const handleReposition = (): void => {
+      updateCoords()
+    }
+
+    window.addEventListener('resize', handleReposition)
+    // Nested scroll (workspace__content vb.) için capture
+    window.addEventListener('scroll', handleReposition, true)
     return () => {
-      window.removeEventListener('resize', reposition)
-      window.removeEventListener('scroll', reposition, true)
+      window.removeEventListener('resize', handleReposition)
+      window.removeEventListener('scroll', handleReposition, true)
     }
   }, [open, disabled])
 
   useEffect(() => {
     if (disabled) return
-    const onDown = (event: MouseEvent): void => {
+    const handlePointerDown = (event: MouseEvent): void => {
       const target = event.target as Node
-      if (!rootRef.current?.contains(target) && !listRef.current?.contains(target)) {
+      const inRoot = rootRef.current?.contains(target) ?? false
+      const inList = listRef.current?.contains(target) ?? false
+      if (!inRoot && !inList) {
         setOpen(false)
-        if (selected) setQuery(partnerLabel(selected))
+        if (selectedPartner) setQuery(partnerLabel(selectedPartner))
       }
     }
-    document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
-  }, [disabled, selected])
+    document.addEventListener('mousedown', handlePointerDown)
+    return () => document.removeEventListener('mousedown', handlePointerDown)
+  }, [disabled, selectedPartner])
 
-  const pick = (id: string): void => {
-    onChange(id)
+  useEffect(() => {
+    if (selectedPartner) {
+      setQuery(partnerLabel(selectedPartner))
+    } else if (!open) {
+      setQuery('')
+    }
+  }, [selectedPartner, open])
+
+  const selectPartner = (partner: Partner | null): void => {
+    if (!partner) {
+      onChange('')
+      setQuery('')
+    } else {
+      onChange(partner.id)
+      setQuery(partnerLabel(partner))
+    }
     setOpen(false)
-    const partner = partners.find((p) => p.id === id)
-    if (partner) setQuery(partnerLabel(partner))
   }
 
-  const clear = (): void => {
-    onChange('')
-    setQuery('')
-    setOpen(false)
+  const handleInputChange = (next: string): void => {
+    setQuery(next)
+    setOpen(true)
+    if (!next.trim() && allowEmpty) {
+      onChange('')
+      return
+    }
+    if (selectedPartner && next.trim() !== partnerLabel(selectedPartner)) {
+      onChange('')
+    }
   }
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>): void => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      setOpen(true)
+      setHighlightIndex((prev) => Math.min(prev + 1, Math.max(visible.length - 1, 0)))
+      return
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setOpen(true)
+      setHighlightIndex((prev) => Math.max(prev - 1, 0))
+      return
+    }
+
+    if (event.key === 'Enter' && open && visible.length > 0) {
+      event.preventDefault()
+      selectPartner(visible[highlightIndex] ?? visible[0])
+      return
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      setOpen(false)
+      if (selectedPartner) setQuery(partnerLabel(selectedPartner))
+      else setQuery('')
+    }
+  }
+
+  const dropdownList =
+    open && !disabled
+      ? createPortal(
+          <ul
+            ref={listRef}
+            id={listId}
+            className="partner-search-select__list partner-search-select__list--portal"
+            role="listbox"
+            style={{
+              top: coords.top,
+              left: coords.left,
+              width: coords.width,
+              zIndex: DROPDOWN_LAYER_Z_INDEX
+            }}
+          >
+            {allowEmpty && !query.trim() ? (
+              <li>
+                <button
+                  type="button"
+                  className="partner-search-select__option"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => selectPartner(null)}
+                >
+                  {emptyLabel}
+                </button>
+              </li>
+            ) : null}
+            {query.trim() && filtered.length === 0 ? (
+              <li className="partner-search-select__empty">Üye bulunamadı.</li>
+            ) : null}
+            {visible.map((partner, index) => (
+              <li key={partner.id}>
+                <button
+                  type="button"
+                  className={`partner-search-select__option${
+                    index === highlightIndex ? ' partner-search-select__option--active' : ''
+                  }${partner.id === value ? ' partner-search-select__option--selected' : ''}`}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => selectPartner(partner)}
+                >
+                  {partnerLabel(partner)}
+                </button>
+              </li>
+            ))}
+            {hiddenCount > 0 ? (
+              <li className="partner-search-select__empty">
+                +{hiddenCount} üye daha var — aramayı daraltın.
+              </li>
+            ) : null}
+          </ul>,
+          document.body
+        )
+      : null
 
   return (
     <div
       ref={rootRef}
-      className={open ? 'partner-search partner-search--open' : 'partner-search'}
+      className={`partner-search-select${compact ? ' partner-search-select--compact' : ''}${open ? ' partner-search-select--open' : ''}`}
     >
       <input
         ref={inputRef}
-        id={listId}
-        className="partner-search__input"
-        type="search"
-        role="combobox"
-        aria-expanded={open}
-        aria-controls={`${listId}-list`}
-        aria-autocomplete="list"
+        id={id}
+        type="text"
+        className={`field-input partner-search-select__input${compact ? ' partner-search-select__input--compact' : ''}`}
+        value={query}
         disabled={disabled}
         placeholder={placeholder}
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value)
-          setOpen(true)
-          setHighlight(0)
-        }}
-        onFocus={() => {
-          if (!disabled) {
-            setOpen(true)
-            updateCoords()
-          }
-        }}
-        onKeyDown={(e) => {
-          if (!open && (e.key === 'ArrowDown' || e.key === 'Enter')) {
-            setOpen(true)
-            return
-          }
-          if (e.key === 'Escape') {
-            setOpen(false)
-            if (selected) setQuery(partnerLabel(selected))
-            return
-          }
-          if (e.key === 'ArrowDown') {
-            e.preventDefault()
-            setHighlight((i) => Math.min(i + 1, visible.length - 1))
-          }
-          if (e.key === 'ArrowUp') {
-            e.preventDefault()
-            setHighlight((i) => Math.max(i - 1, 0))
-          }
-          if (e.key === 'Enter' && open && visible[highlight]) {
-            e.preventDefault()
-            pick(visible[highlight].id)
-          }
-          if (e.key === 'Backspace' && !query && value) clear()
-        }}
+        autoComplete="off"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls={listId}
+        onFocus={() => setOpen(true)}
+        onClick={() => setOpen(true)}
+        onChange={(e) => handleInputChange(e.target.value)}
+        onKeyDown={handleKeyDown}
       />
-      {open && !disabled
-        ? createPortal(
-            <ul
-              ref={listRef}
-              id={`${listId}-list`}
-              className="partner-search__list"
-              role="listbox"
-              style={{
-                position: 'fixed',
-                top: coords.top,
-                left: coords.left,
-                width: coords.width,
-                zIndex: DROPDOWN_Z
-              }}
-            >
-              <li>
-                <button type="button" className="partner-search__option" onClick={clear}>
-                  Seçin...
-                </button>
-              </li>
-              {visible.length === 0 ? (
-                <li className="partner-search__empty">Üye bulunamadı</li>
-              ) : (
-                visible.map((partner, index) => (
-                  <li key={partner.id}>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={partner.id === value}
-                      className={
-                        index === highlight
-                          ? 'partner-search__option partner-search__option--active'
-                          : 'partner-search__option'
-                      }
-                      onMouseEnter={() => setHighlight(index)}
-                      onClick={() => pick(partner.id)}
-                    >
-                      {partnerLabel(partner)}
-                      {!partner.isActive ? ' (Pasif)' : ''}
-                    </button>
-                  </li>
-                ))
-              )}
-              {filtered.length > MAX_VISIBLE ? (
-                <li className="partner-search__empty">
-                  +{filtered.length - MAX_VISIBLE} sonuç daha — aramayı daraltın
-                </li>
-              ) : null}
-            </ul>,
-            document.body
-          )
-        : null}
+      {dropdownList}
     </div>
   )
 }
