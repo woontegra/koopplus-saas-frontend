@@ -224,6 +224,8 @@ export function ExtendModal({
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  /** Varsayılan: örnek verileri sil, müşteri verisini koru */
+  const [keepSampleData, setKeepSampleData] = useState(false)
 
   const run = async (body: Parameters<typeof platformApi.extendTenant>[1], okMsg: string): Promise<void> => {
     setSaving(true)
@@ -252,7 +254,12 @@ export function ExtendModal({
   }
 
   const convert = async (): Promise<void> => {
-    await run({ convertToYearly: true }, 'yıllığa çevrildi (+1 yıl)')
+    await run(
+      { convertToYearly: true, keepSampleData },
+      keepSampleData
+        ? 'yıllığa çevrildi (+1 yıl, örnek veriler korundu)'
+        : 'yıllığa çevrildi (+1 yıl, örnek veriler silindi)'
+    )
   }
 
   return (
@@ -280,6 +287,29 @@ export function ExtendModal({
         Mevcut bitiş: <strong>{currentExpiry ? formatDate(currentExpiry) : 'Sınırsız'}</strong>
         {tenant.isDemo ? ' (demo)' : ''}. Süre dolmuşsa bugünden itibaren uzatılır ve kooperatif aktifleştirilir.
       </p>
+      {tenant.isDemo && (
+        <fieldset className="form-group" style={{ marginBottom: 12 }}>
+          <legend style={{ fontSize: 13, fontWeight: 600 }}>Yıllığa çevirirken örnek veriler</legend>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 6 }}>
+            <input
+              type="radio"
+              name="keepSampleData"
+              checked={!keepSampleData}
+              onChange={() => setKeepSampleData(false)}
+            />
+            <span>Örnek verileri sil, müşterinin girdiği verileri koru (varsayılan)</span>
+          </label>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+            <input
+              type="radio"
+              name="keepSampleData"
+              checked={keepSampleData}
+              onChange={() => setKeepSampleData(true)}
+            />
+            <span>Örnek verileri koru</span>
+          </label>
+        </fieldset>
+      )}
       <div className="platform-segment" role="tablist">
         <button
           type="button"

@@ -1,5 +1,9 @@
-import type { MemberDebtTableReport, MemberPaymentHistoryItem } from '@shared/types'
-import { formatDate, formatMoney } from '../../utils/format'
+import type {
+  MemberDebtTableReport,
+  MemberDebtTableRow,
+  MemberPaymentHistoryItem
+} from '@shared/types'
+import { formatDate, formatMoney, formatMoneyTr } from '../../utils/format'
 
 interface MemberPaymentHistoryPanelProps {
   report: MemberDebtTableReport
@@ -7,6 +11,21 @@ interface MemberPaymentHistoryPanelProps {
   onDelete?: (item: MemberPaymentHistoryItem) => void
   onEdit?: (item: MemberPaymentHistoryItem) => void
 }
+
+const MONTH_SHORT = [
+  'Oca',
+  'Şub',
+  'Mar',
+  'Nis',
+  'May',
+  'Haz',
+  'Tem',
+  'Ağu',
+  'Eyl',
+  'Eki',
+  'Kas',
+  'Ara'
+] as const
 
 function paymentSplit(
   report: MemberDebtTableReport,
@@ -30,6 +49,47 @@ function paymentSplit(
     }
   }
   return { interest, principal }
+}
+
+function shortPeriodLabel(row: MemberDebtTableRow): string {
+  const m = MONTH_SHORT[(row.period_month ?? 1) - 1] ?? String(row.period_month)
+  return m
+}
+
+/** Örn: "Oca faizi 50 · Şub faizi 25 · Oca ana para 500 · Mar ana para 425" */
+function paymentPeriodBreakdown(report: MemberDebtTableReport, paymentId: number): string {
+  type Agg = { interest: number; principal: number; order: number; label: string }
+  const byKey = new Map<string, Agg>()
+
+  for (const row of report.rows) {
+    for (const allocation of row.payment_allocations ?? []) {
+      if (allocation.payment_id !== paymentId) continue
+      const key = `${row.period_year}-${String(row.period_month).padStart(2, '0')}`
+      const cur = byKey.get(key) ?? {
+        interest: 0,
+        principal: 0,
+        order: row.period_year * 12 + row.period_month,
+        label: shortPeriodLabel(row)
+      }
+      cur.interest += allocation.applied_to_this_due_interest ?? 0
+      cur.principal += allocation.applied_to_this_due_principal ?? 0
+      byKey.set(key, cur)
+    }
+  }
+
+  const ordered = [...byKey.values()].sort((a, b) => a.order - b.order)
+  const parts: string[] = []
+  for (const item of ordered) {
+    if (item.interest > 0.005) {
+      parts.push(`${item.label} faizi ${formatMoneyTr(item.interest)}`)
+    }
+  }
+  for (const item of ordered) {
+    if (item.principal > 0.005) {
+      parts.push(`${item.label} ana para ${formatMoneyTr(item.principal)}`)
+    }
+  }
+  return parts.join(' · ')
 }
 
 export default function MemberPaymentHistoryPanel({
@@ -59,6 +119,7 @@ export default function MemberPaymentHistoryPanel({
             const principalPct = total > 0.005 ? (split.principal / total) * 100 : 0
             const method = item.payment_method?.trim() || item.source_label?.trim() || '—'
             const description = item.description?.trim() || 'Tahsilat'
+            const breakdown = paymentPeriodBreakdown(report, item.payment_id)
             return (
               <div key={item.payment_id} className="member-payment-card">
                 <div className="member-payment-card__top">
@@ -93,6 +154,9 @@ export default function MemberPaymentHistoryPanel({
                       {formatMoney(split.principal)} ana paraya
                     </span>
                   </div>
+                  {breakdown ? (
+                    <div className="member-payment-card__breakdown">{breakdown}</div>
+                  ) : null}
                 </div>
                 {(canDelete || onEdit) && (
                   <div className="member-payment-card__actions">

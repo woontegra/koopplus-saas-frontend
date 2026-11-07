@@ -168,7 +168,7 @@ export function buildMemberDebtDisplaySummary(
 
   const statusSummary =
     categories.amountDueToday > EPSILON
-      ? `Bugün: ${categories.amountDueToday.toLocaleString('tr-TR', {
+      ? `Vadesi geçmiş: ${categories.amountDueToday.toLocaleString('tr-TR', {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2
         })} ₺`

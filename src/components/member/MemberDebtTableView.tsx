@@ -144,7 +144,7 @@ function paymentSourceLabel(item: MemberPaymentHistoryItem): string {
 }
 
 function rowDisplayStatus(row: MemberDebtTableRow, asOfDate: string): string {
-  if (row.is_interest_only) return 'Faiz'
+  if (row.is_interest_only) return 'Faiz işliyor'
   if (row.row_status === 'not_due' || row.due_date >= asOfDate) return 'Vadesi gelmedi'
   if ((row.remaining_due ?? 0) <= EPSILON && (row.remaining_interest ?? row.delay_interest ?? 0) <= EPSILON) {
     return row.row_status === 'closed_late' ? 'Geç ödendi' : 'Ödendi'
@@ -425,9 +425,9 @@ export default function MemberDebtTableView({
                   <th className="text-right">Vadesinde Mahsup</th>
                   <th className="text-right">Sonradan Mahsup</th>
                   <th className="text-right">Ana Paraya Toplam</th>
-                  <th className="text-right">Bu Ay İşleyen Faiz</th>
+                  <th className="text-right">İşleyen faiz</th>
                   <th className="text-right">Bu Ay Faize Mahsup</th>
-                  <th className="text-right">Kalan Aidat</th>
+                  <th className="text-right">Kalan ana para</th>
                   <th className="text-right">Dönem Sonu Kalan Faiz</th>
                   <th>Kapanış Tarihi</th>
                   <th>Durum</th>
@@ -473,7 +473,7 @@ export default function MemberDebtTableView({
                       {formatMoney(row.remaining_interest ?? row.delay_interest)}
                     </td>
                     <td>{row.closing_date ? formatDate(row.closing_date) : '—'}</td>
-                    <td>{row.row_status_label ?? '—'}</td>
+                    <td>{rowDisplayStatus(row, report.as_of_date)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -497,7 +497,9 @@ export default function MemberDebtTableView({
     0
   )
   const actionColCount = showDetailColumn || showRowActions ? 1 : 0
-  const tableColSpan = 8 + actionColCount + (detailedView ? 6 : 0)
+  // Dönem…Durum (9) + detay kolonları + işlem
+  const tableColSpan = 9 + actionColCount + (detailedView ? 6 : 0)
+  const hiddenPeriodCount = Math.max(0, reportRows.length - filteredRows.length)
 
   return (
     <div className="member-debt-table-wrap">
@@ -527,10 +529,22 @@ export default function MemberDebtTableView({
           </div>
           <div className="member-debt-kpi member-debt-kpi--danger">
             <span className="member-debt-kpi__label">Bugünkü genel borç</span>
-            <strong className="member-debt-kpi__value member-debt-kpi__value--lg">
-              {formatMoney(categories.allPeriodsTotalDebt)}
-            </strong>
-            <span className="member-debt-kpi__hint">Ana para + faiz</span>
+            <div className="member-debt-kpi__split member-debt-kpi__split--stack">
+              <div>
+                <span>Vadesi geçmiş borç</span>
+                <strong className="member-debt-kpi__value member-debt-kpi__value--lg member-debt-kpi__value--danger">
+                  {formatMoney(categories.amountDueToday)}
+                </strong>
+              </div>
+              <div>
+                <span>Vadesi gelmemiş aidat</span>
+                <strong>{formatMoney(categories.notYetDuePrincipal)}</strong>
+              </div>
+              <div>
+                <span>Toplam</span>
+                <strong>{formatMoney(categories.allPeriodsTotalDebt)}</strong>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -753,6 +767,15 @@ export default function MemberDebtTableView({
                   Ödemeler önce birikmiş faize, kalanı en eski aidatın ana parasına işlenir ·{' '}
                   {filteredRows.length} dönem
                 </span>
+                {hiddenPeriodCount > 0 && periodFilter !== 'all' && (
+                  <button
+                    type="button"
+                    className="member-debt-period-filters__hidden-link"
+                    onClick={() => setPeriodFilter('all')}
+                  >
+                    {hiddenPeriodCount} dönem bu filtrede gösterilmiyor · Tümünü göster
+                  </button>
+                )}
               </div>
             )}
 
@@ -781,6 +804,13 @@ export default function MemberDebtTableView({
                         Faize giden <InfoTip text="Bu dönemin faizine mahsup edilen tutar." />
                       </th>
                       <th
+                        className="text-right money-interest"
+                        title="Bu ay, ödenmemiş aidatlar için işleyen faiz"
+                      >
+                        İşleyen faiz{' '}
+                        <InfoTip text="Bu ay, ödenmemiş aidatlar için işleyen faiz" />
+                      </th>
+                      <th
                         className="text-right money-principal"
                         title="Vadesinde ve sonradan ana paraya mahsup toplamı."
                       >
@@ -797,7 +827,7 @@ export default function MemberDebtTableView({
                           <th>Kapanış tarihi</th>
                         </>
                       )}
-                      <th className="text-right">Kalan</th>
+                      <th className="text-right">Kalan ana para</th>
                       <th>Durum</th>
                       {(showDetailColumn || showRowActions) && (
                         <th className="text-center member-debt-table__actions-col">Detay / İşlem</th>
@@ -845,6 +875,11 @@ export default function MemberDebtTableView({
                               : dueInterestAllocated(row) > EPSILON
                                 ? formatMoney(dueInterestAllocated(row))
                                 : '—'}
+                          </td>
+                          <td className="money text-right money-interest">
+                            {(row.accrued_interest_total ?? 0) > EPSILON
+                              ? formatMoney(row.accrued_interest_total!)
+                              : '—'}
                           </td>
                           <td className="money text-right money-principal">
                             {row.is_interest_only
@@ -972,6 +1007,11 @@ export default function MemberDebtTableView({
                         <td className="money text-right money-interest">
                           <strong>{formatMoney(totalInterestAllocated)}</strong>
                         </td>
+                        <td className="money text-right money-interest">
+                          <strong>
+                            {formatTotalCell(displaySummary.totalRowCells.accruedInterest)}
+                          </strong>
+                        </td>
                         <td className="money text-right money-principal">
                           <strong>{formatMoney(totalPrincipalAllocated)}</strong>
                         </td>
@@ -1006,6 +1046,11 @@ export default function MemberDebtTableView({
                         </td>
                         <td>
                           <strong>{formatTotalCell(displaySummary.totalRowCells.status)}</strong>
+                          {periodFilter !== 'all' && (
+                            <div className="member-debt-table__totals-note">
+                              Toplamlar tüm dönemleri kapsar
+                            </div>
+                          )}
                         </td>
                         {(showDetailColumn || showRowActions) && <td />}
                       </tr>

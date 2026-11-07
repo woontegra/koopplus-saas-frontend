@@ -74,5 +74,23 @@ export const settingsDesktopApi = {
       method: 'PATCH',
       body: partial
     })
+  },
+
+  async getSampleData(): Promise<
+    ApiResult<{ has_sample_data: boolean; total: number; counts: Record<string, number> }>
+  > {
+    return desktopRequest('/api/settings/sample-data')
+  },
+
+  async clearSampleData(): Promise<
+    ApiResult<{
+      deleted: Record<string, number>
+      kept_partners: number
+      kept_policies: number
+      total_deleted: number
+      message: string
+    }>
+  > {
+    return desktopRequest('/api/settings/clear-sample-data', { method: 'POST' })
   }
 }

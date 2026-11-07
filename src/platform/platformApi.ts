@@ -130,6 +130,8 @@ export type PlatformExtendBody = {
   days?: number
   toDate?: string
   convertToYearly?: boolean
+  /** false (varsayılan): örnek verileri sil. true: örnek verileri koru. */
+  keepSampleData?: boolean
   note?: string
 }
 

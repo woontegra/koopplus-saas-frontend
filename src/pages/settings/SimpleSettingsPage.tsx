@@ -19,7 +19,13 @@ import CityDistrictFields from '../../components/ui/CityDistrictFields'
 import type { AppLayoutContext } from '../../components/layout/AppLayout'
 import { useActionToast } from '../../hooks/useActionToast'
 
-type SettingsSection = 'general' | 'password' | 'backup'
+type SettingsSection = 'general' | 'password' | 'backup' | 'sample'
+
+type SampleDataInfo = {
+  has_sample_data: boolean
+  total: number
+  counts: Record<string, number>
+}
 
 function CooperativeSection({
   initial,
@@ -383,17 +389,90 @@ function BackupSettingsSection({
   )
 }
 
+function SampleDataSection(): JSX.Element {
+  const toast = useActionToast()
+  const [info, setInfo] = useState<SampleDataInfo | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [clearing, setClearing] = useState(false)
+  const [error, setError] = useState('')
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    const res = await window.api.settings.getSampleData()
+    if (res.success && res.data) setInfo(res.data)
+    else setError(res.error ?? 'Örnek veri bilgisi alınamadı')
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const handleClear = async (): Promise<void> => {
+    const ok = window.confirm(
+      'Örnek (demo) veriler silinecek. Sizin girdiğiniz kayıtlar korunur. Devam edilsin mi?'
+    )
+    if (!ok) return
+    setClearing(true)
+    setError('')
+    const res = await window.api.settings.clearSampleData()
+    setClearing(false)
+    if (res.success && res.data) {
+      toast.success('Örnek veriler temizlendi', res.data.message)
+      await load()
+    } else {
+      setError(res.error ?? 'Temizleme başarısız')
+      toast.fail('Örnek veriler silinemedi', res.error)
+    }
+  }
+
+  return (
+    <DataPanel
+      title="Örnek Veriler"
+      subtitle="Demo kooperatifte otomatik üretilen örnek kayıtlar"
+    >
+      {error && <div className="alert alert-error">{error}</div>}
+      {loading ? (
+        <p className="muted">Yükleniyor…</p>
+      ) : info?.has_sample_data ? (
+        <>
+          <p>
+            Bu kooperatifte <strong>{info.total}</strong> örnek kayıt işaretli. Temizleme yalnızca
+            örnek olarak işaretlenen kayıtları siler; sizin girdiğiniz veriler kalır.
+          </p>
+          <div className="settings-actions">
+            <button
+              type="button"
+              className="btn btn-sm btn-danger-outline"
+              disabled={clearing}
+              onClick={() => void handleClear()}
+            >
+              {clearing ? 'Siliniyor…' : 'Örnek verileri temizle'}
+            </button>
+          </div>
+        </>
+      ) : (
+        <p className="muted">Temizlenecek örnek veri yok.</p>
+      )}
+    </DataPanel>
+  )
+}
+
 export default function SimpleSettingsPage(): JSX.Element {
-  const { user, refreshSession } = useAuth()
+  const { user, refreshSession, isAdmin } = useAuth()
   const [searchParams] = useSearchParams()
   const sectionParam = searchParams.get('section')
   const initialSection: SettingsSection =
     sectionParam === 'password' ||
     sectionParam === 'backup' ||
-    sectionParam === 'general'
+    sectionParam === 'general' ||
+    sectionParam === 'sample'
       ? sectionParam
       : 'general'
-  const [section, setSection] = useState<SettingsSection>(initialSection)
+  const [section, setSection] = useState<SettingsSection>(
+    initialSection === 'sample' && !isAdmin ? 'general' : initialSection
+  )
   const [loading, setLoading] = useState(true)
   const [settings, setSettings] = useState<AppSettingsAll | null>(null)
   const [backupInfo, setBackupInfo] = useState<BackupInfo | null>(null)
@@ -419,8 +498,9 @@ export default function SimpleSettingsPage(): JSX.Element {
       { key: 'password', label: 'Şifre Değiştir' },
       { key: 'backup', label: 'Yedekleme Ayarları' }
     ]
+    if (isAdmin) items.push({ key: 'sample', label: 'Örnek Veriler' })
     return items
-  }, [])
+  }, [isAdmin])
 
   if (loading || !settings) {
     return <div className="page-loading">Ayarlar yükleniyor...</div>
@@ -469,6 +549,7 @@ export default function SimpleSettingsPage(): JSX.Element {
           {section === 'backup' && (
             <BackupSettingsSection info={backupInfo} onRefresh={loadAll} />
           )}
+          {section === 'sample' && isAdmin && <SampleDataSection />}
         </div>
       </div>
     </div>

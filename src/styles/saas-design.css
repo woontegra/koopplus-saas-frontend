@@ -366,6 +366,31 @@ body {
   line-height: 1.35;
 }
 
+.member-debt-period-filters__hidden-link {
+  flex-basis: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--kat-accent, #0f766e);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.member-debt-period-filters__hidden-link:hover {
+  color: var(--kat-text-primary);
+}
+
+.member-debt-table__totals-note {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--kat-text-muted);
+}
+
 /* Form alanları */
 input,
 select,
@@ -558,6 +583,10 @@ textarea,
   gap: 8px;
 }
 
+.member-debt-kpi__split--stack {
+  gap: 10px;
+}
+
 .member-debt-kpi__split span {
   display: block;
   font-size: 12px;
@@ -567,6 +596,10 @@ textarea,
 .member-debt-kpi__split strong {
   font-size: 16px;
   font-variant-numeric: tabular-nums;
+}
+
+.member-debt-kpi__value--danger {
+  color: var(--kat-debit) !important;
 }
 
 .member-debt-tabs-bar {
@@ -743,6 +776,13 @@ textarea,
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+.member-payment-card__breakdown {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--kat-text-secondary);
 }
 
 .member-payment-card__actions {
