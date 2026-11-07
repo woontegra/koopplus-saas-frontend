@@ -1,7 +1,10 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Navigate, NavLink, Route, Routes, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import BrandLogo from '../../components/layout/BrandLogo'
+import NavBackdrop from '../../components/layout/NavBackdrop'
+import NavMenuButton from '../../components/layout/NavMenuButton'
+import { NavChromeProvider, useNavChrome } from '../../context/NavChromeContext'
 import {
   IconBell,
   IconBuilding,
@@ -48,9 +51,12 @@ function OverviewEntry(): JSX.Element {
 
 function PlatformShell(): JSX.Element {
   const { user, logout, tenantId, memberships } = useAuth()
+  const { navOpen, closeNav } = useNavChrome()
   const navigate = useNavigate()
+  const [title] = useState('Platform Paneli')
 
   const backToCoop = (): void => {
+    closeNav()
     if (tenantId) {
       navigate('/', { replace: true })
       return
@@ -67,8 +73,9 @@ function PlatformShell(): JSX.Element {
   }
 
   return (
-    <div className="pf-shell">
-      <aside className="pf-sidebar">
+    <div className={`pf-shell${navOpen ? ' is-nav-open' : ''}`}>
+      <NavBackdrop />
+      <aside id="app-sidebar" className={`pf-sidebar${navOpen ? ' is-open' : ''}`}>
         <div className="pf-sidebar__brand">
           <BrandLogo className="pf-sidebar__logo" />
           <span className="pf-sidebar__title">
@@ -83,6 +90,7 @@ function PlatformShell(): JSX.Element {
               to={item.to}
               end={item.end}
               className={({ isActive }) => `pf-nav-link${isActive ? ' is-active' : ''}`}
+              onClick={closeNav}
             >
               <span className="pf-nav-link__icon">{item.icon}</span>
               {item.label}
@@ -102,6 +110,7 @@ function PlatformShell(): JSX.Element {
             type="button"
             className="pf-sidebar__btn"
             onClick={() => {
+              closeNav()
               void logout().then(() => navigate('/login', { replace: true }))
             }}
           >
@@ -111,6 +120,10 @@ function PlatformShell(): JSX.Element {
       </aside>
 
       <main className="pf-main">
+        <div className="pf-main__topbar">
+          <NavMenuButton />
+          <span className="pf-main__topbar-title">{title}</span>
+        </div>
         <div className="pf-main__inner">
           <Routes>
             <Route path="/" element={<OverviewEntry />} />
@@ -136,5 +149,9 @@ export default function PlatformApp(): JSX.Element {
   if (!user?.isPlatformAdmin) {
     return <Navigate to="/" replace />
   }
-  return <PlatformShell />
+  return (
+    <NavChromeProvider>
+      <PlatformShell />
+    </NavChromeProvider>
+  )
 }

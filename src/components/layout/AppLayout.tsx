@@ -4,9 +4,11 @@ import type { Settings } from '@shared/types'
 import { useAuth } from '../../auth/AuthContext'
 import { useCooperatives } from '../../context/CooperativeContext'
 import { getPageTitle } from '../../config/navigation'
+import { NavChromeProvider } from '../../context/NavChromeContext'
 import AppHeader from './AppHeader'
 import Sidebar from './Sidebar'
 import AppFooter from './AppFooter'
+import NavBackdrop from './NavBackdrop'
 import {
   AnnouncementBanners,
   DemoUsageBanner,
@@ -15,6 +17,7 @@ import {
 } from './TopBanners'
 import Heartbeat from './Heartbeat'
 import { useProtectNativeTyping } from '../../hooks/useAppKeyboard'
+import { useTouchTips } from '../../hooks/useTouchTips'
 
 export interface AppLayoutContext {
   settings: Settings | null
@@ -41,37 +44,41 @@ export default function AppLayout(): JSX.Element {
 
   const pageTitle = getPageTitle(location.pathname)
   useProtectNativeTyping()
+  useTouchTips()
 
   if (!user) {
     return <div className="auth-loading">Oturum doğrulanıyor...</div>
   }
 
   return (
-    <div className="app-shell">
-      <Heartbeat />
-      <Sidebar />
-      <div className="app-main">
-        <SupportBanner />
-        <DemoUsageBanner />
-        <UsageExpiryBanner />
-        <AnnouncementBanners />
-        <AppHeader
-          settings={settings}
-          pageTitle={pageTitle}
-          user={user}
-          onLogout={() => {
-            logout().catch(() => undefined)
-          }}
-        />
-        <main className="workspace__content">
-          <Outlet
-            key={currentId ?? 'none'}
-            context={{ settings, reloadSettings } satisfies AppLayoutContext}
+    <NavChromeProvider>
+      <div className="app-shell">
+        <Heartbeat />
+        <NavBackdrop />
+        <Sidebar />
+        <div className="app-main">
+          <SupportBanner />
+          <DemoUsageBanner />
+          <UsageExpiryBanner />
+          <AnnouncementBanners />
+          <AppHeader
+            settings={settings}
+            pageTitle={pageTitle}
+            user={user}
+            onLogout={() => {
+              logout().catch(() => undefined)
+            }}
           />
-        </main>
-        <AppFooter settings={settings} />
+          <main className="workspace__content">
+            <Outlet
+              key={currentId ?? 'none'}
+              context={{ settings, reloadSettings } satisfies AppLayoutContext}
+            />
+          </main>
+          <AppFooter settings={settings} />
+        </div>
       </div>
-    </div>
+    </NavChromeProvider>
   )
 }
 

@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { getNavGroupsForRole } from '../../config/navigation'
 import { roleLabel, useAuth } from '../../auth/AuthContext'
+import { useNavChrome } from '../../context/NavChromeContext'
 import { IconLogout, NavIcon } from '../ui/icons'
 import BrandLogo from './BrandLogo'
 import { useAskDialog } from '../../hooks/useAskDialog'
 
 export default function Sidebar(): JSX.Element {
   const { user, logout } = useAuth()
+  const { navOpen, closeNav } = useNavChrome()
   const ask = useAskDialog()
   const groups = getNavGroupsForRole(user?.role)
   const [loggingOut, setLoggingOut] = useState(false)
@@ -32,7 +34,7 @@ export default function Sidebar(): JSX.Element {
   }
 
   return (
-    <aside className="sidebar">
+    <aside id="app-sidebar" className={`sidebar${navOpen ? ' is-open' : ''}`}>
       <div className="sidebar__brand">
         <BrandLogo className="sidebar__brand-logo" />
       </div>
@@ -50,6 +52,7 @@ export default function Sidebar(): JSX.Element {
                   `sidebar__item${isActive ? ' sidebar__item--active' : ''}`
                 }
                 title={item.description}
+                onClick={closeNav}
               >
                 <NavIcon name={item.icon} size={18} />
                 <span className="sidebar__item-copy">

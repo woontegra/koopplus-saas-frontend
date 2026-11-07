@@ -13,6 +13,10 @@ coverage/
 .idea/
 .vscode/
 *.tsbuildinfo
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
 
 .backup-pre-members/
 _test_out.txt

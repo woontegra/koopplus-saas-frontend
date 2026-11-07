@@ -5,6 +5,7 @@ import type { AuthContextUser } from '../../auth/AuthContext'
 import { useCooperatives } from '../../context/CooperativeContext'
 import { formatMonthYear } from '../../utils/format'
 import { IconBuilding } from '../ui/icons'
+import NavMenuButton from './NavMenuButton'
 import ProfileMenu from './ProfileMenu'
 
 interface AppHeaderProps {
@@ -31,6 +32,7 @@ export default function AppHeader({ settings, pageTitle }: AppHeaderProps): JSX.
     <header className="app-header">
       <div className="app-header__main">
         <div className="app-header__brand">
+          <NavMenuButton />
           <CooperativeSwitcher fallbackName={coopName || pageTitle} />
         </div>
 

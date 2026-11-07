@@ -979,15 +979,7 @@ button.pf-list__row:hover {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .pf-sidebar {
-    position: static;
-    height: auto;
-  }
-
-  .pf-sidebar__nav {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
+  /* Mobil çekmece: responsive.css (≤1024) yönetir — burada nav yatay yapılmaz. */
 
   .pf-main__inner {
     padding: 18px 14px 32px;

@@ -15,7 +15,7 @@ function waHref(whatsapp: string): string {
   return `https://wa.me/${d}`
 }
 
-/** Telefon / e-posta / WhatsApp bağlantıları — şerit ve engel ekranı. */
+/** Telefon / e-posta / WhatsApp — mobilde ikon, masaüstünde metin. */
 export function ContactLinks({
   contact,
   className = ''
@@ -32,23 +32,33 @@ export function ContactLinks({
   return (
     <span className={`contact-links ${className}`.trim()}>
       {phone ? (
-        <a className="contact-links__item" href={telHref(phone)}>
-          {phone}
+        <a className="contact-links__item contact-links__item--phone" href={telHref(phone)} title={phone}>
+          <span className="contact-links__icon" aria-hidden>
+            ☎
+          </span>
+          <span className="contact-links__label">{phone}</span>
         </a>
       ) : null}
       {email ? (
-        <a className="contact-links__item" href={`mailto:${email}`}>
-          {email}
+        <a className="contact-links__item contact-links__item--email" href={`mailto:${email}`} title={email}>
+          <span className="contact-links__icon" aria-hidden>
+            ✉
+          </span>
+          <span className="contact-links__label">{email}</span>
         </a>
       ) : null}
       {whatsapp ? (
         <a
-          className="contact-links__item"
+          className="contact-links__item contact-links__item--wa"
           href={waHref(whatsapp)}
           target="_blank"
           rel="noopener noreferrer"
+          title={whatsapp}
         >
-          WhatsApp
+          <span className="contact-links__icon" aria-hidden>
+            WA
+          </span>
+          <span className="contact-links__label">WhatsApp</span>
         </a>
       ) : null}
     </span>

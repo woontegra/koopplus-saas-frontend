@@ -274,126 +274,127 @@ export default function SimpleMembersPage(): JSX.Element {
           <EmptyState message="Kayıtlı üye bulunamadı." compact />
 
         ) : (
+          <>
+            <div className="mobile-card-list" aria-label="Üye kartları">
+              {partners.map((p) => (
+                <article
+                  key={`card-${p.id}`}
+                  className={`mobile-card${selectedMemberId === p.id ? ' is-selected' : ''}`}
+                  onClick={() => setSelectedMemberId(p.id)}
+                >
+                  <div className="mobile-card__head">
+                    <strong className="mobile-card__title">{p.full_name}</strong>
+                    <StatusBadge active={p.is_active === 1} />
+                  </div>
+                  <dl className="mobile-card__meta">
+                    <div>
+                      <dt>Üye No</dt>
+                      <dd className="cell-mono">{p.partner_no}</dd>
+                    </div>
+                    <div>
+                      <dt>Telefon</dt>
+                      <dd>{p.phone || '—'}</dd>
+                    </div>
+                    <div>
+                      <dt>Bakiye</dt>
+                      <dd className="money debit">{formatMoney(p.debt_balance ?? p.balance ?? 0)}</dd>
+                    </div>
+                    <div>
+                      <dt>Pay</dt>
+                      <dd className="cell-mono">
+                        {formatShareRatioTr(resolveShareRatio(p.share_ratio, p.share_count))}
+                      </dd>
+                    </div>
+                  </dl>
+                  <div className="mobile-card__actions row-actions">
+                    <button type="button" className="btn btn-sm" onClick={() => openDetail(p.id)}>
+                      Detay
+                    </button>
+                    <button type="button" className="btn btn-sm" onClick={() => openEdit(p)}>
+                      Düzenle
+                    </button>
+                    <button type="button" className="btn btn-sm btn-danger" onClick={() => handleDelete(p)}>
+                      Sil
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
 
-          <div className="table-wrap">
-
-            <table className="data-table simple-members-table">
-
-              <thead>
-
-                <tr>
-
-                  <th>Üye No</th>
-
-                  <th>Ad Soyad / Ünvan</th>
-
-                  <th>Telefon</th>
-
-                  <th className="simple-members-table__hide-narrow">E-posta</th>
-
-                  <th className="simple-members-table__hide-narrow">İl / İlçe</th>
-
-                  <th className="simple-members-table__hide-narrow">Giriş Tarihi</th>
-
-                  <th className="text-right">Pay Oranı</th>
-
-                  <th>Durum</th>
-
-                  <th className="text-right">Bakiye</th>
-
-                  <th className="text-center simple-members-table__actions-col">İşlem</th>
-
-                </tr>
-
-              </thead>
-
-              <tbody>
-
-                {partners.map((p) => (
-
-                  <tr
-                    key={p.id}
-                    className={selectedMemberId === p.id ? 'data-table__row--selected' : ''}
-                    onClick={() => setSelectedMemberId(p.id)}
-                    onDoubleClick={() => openEditForPartner(p)}
-                  >
-
-                    <td className="cell-mono">{p.partner_no}</td>
-
-                    <td>
-                      {p.full_name}
-                      {p.interest_exempt === 1 && (
-                        <span className="interest-exempt-badge">FAİZ MUAF</span>
-                      )}
-                    </td>
-
-                    <td>{p.phone || '—'}</td>
-
-                    <td className="cell-ellipsis simple-members-table__hide-narrow">{p.email || '—'}</td>
-
-                    <td className="simple-members-table__hide-narrow">{cityDistrict(p)}</td>
-
-                    <td className="simple-members-table__hide-narrow">
-
-                      {p.join_date ? formatDate(p.join_date) : '—'}
-
-                    </td>
-
-                    <td className="text-right cell-mono">
-                      {formatShareRatioTr(resolveShareRatio(p.share_ratio, p.share_count))}
-                    </td>
-
-                    <td>
-
-                      <StatusBadge active={p.is_active === 1} />
-
-                    </td>
-
-                    <td className="money text-right debit">
-                      {formatMoney(p.debt_balance ?? p.balance ?? 0)}
-                      {(p.carried_forward_credit ?? 0) > 0.005 && (
-                        <div className="simple-members-table__carried-forward">
-                          Devreden: {formatMoney(p.carried_forward_credit ?? 0)}
-                        </div>
-                      )}
-                    </td>
-
-                    <td className="text-center">
-
-                      <div className="row-actions">
-
-                        <button type="button" className="btn btn-xs" onClick={() => openDetail(p.id)}>
-
-                          Detay
-
-                        </button>
-
-                        <button type="button" className="btn btn-xs" onClick={() => openEdit(p)}>
-
-                          Düzenle
-
-                        </button>
-
-                        <button type="button" className="btn btn-xs btn-danger" onClick={() => handleDelete(p)}>
-
-                          Sil
-
-                        </button>
-
-                      </div>
-
-                    </td>
-
+            <div className="table-wrap table-wrap--sticky-first desktop-only-table">
+              <table className="data-table simple-members-table">
+                <thead>
+                  <tr>
+                    <th>Üye No</th>
+                    <th>Ad Soyad / Ünvan</th>
+                    <th>Telefon</th>
+                    <th className="simple-members-table__hide-narrow">E-posta</th>
+                    <th className="simple-members-table__hide-narrow">İl / İlçe</th>
+                    <th className="simple-members-table__hide-narrow">Giriş Tarihi</th>
+                    <th className="text-right">Pay Oranı</th>
+                    <th>Durum</th>
+                    <th className="text-right">Bakiye</th>
+                    <th className="text-center simple-members-table__actions-col">İşlem</th>
                   </tr>
-
-                ))}
-
-              </tbody>
-
-            </table>
-
-          </div>
-
+                </thead>
+                <tbody>
+                  {partners.map((p) => (
+                    <tr
+                      key={p.id}
+                      className={selectedMemberId === p.id ? 'data-table__row--selected' : ''}
+                      onClick={() => setSelectedMemberId(p.id)}
+                      onDoubleClick={() => openEditForPartner(p)}
+                    >
+                      <td className="cell-mono">{p.partner_no}</td>
+                      <td>
+                        {p.full_name}
+                        {p.interest_exempt === 1 && (
+                          <span className="interest-exempt-badge">FAİZ MUAF</span>
+                        )}
+                      </td>
+                      <td>{p.phone || '—'}</td>
+                      <td className="cell-ellipsis simple-members-table__hide-narrow">{p.email || '—'}</td>
+                      <td className="simple-members-table__hide-narrow">{cityDistrict(p)}</td>
+                      <td className="simple-members-table__hide-narrow">
+                        {p.join_date ? formatDate(p.join_date) : '—'}
+                      </td>
+                      <td className="text-right cell-mono">
+                        {formatShareRatioTr(resolveShareRatio(p.share_ratio, p.share_count))}
+                      </td>
+                      <td>
+                        <StatusBadge active={p.is_active === 1} />
+                      </td>
+                      <td className="money text-right debit">
+                        {formatMoney(p.debt_balance ?? p.balance ?? 0)}
+                        {(p.carried_forward_credit ?? 0) > 0.005 && (
+                          <div className="simple-members-table__carried-forward">
+                            Devreden: {formatMoney(p.carried_forward_credit ?? 0)}
+                          </div>
+                        )}
+                      </td>
+                      <td className="text-center">
+                        <div className="row-actions">
+                          <button type="button" className="btn btn-xs" onClick={() => openDetail(p.id)}>
+                            Detay
+                          </button>
+                          <button type="button" className="btn btn-xs" onClick={() => openEdit(p)}>
+                            Düzenle
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-xs btn-danger"
+                            onClick={() => handleDelete(p)}
+                          >
+                            Sil
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
 
       </DataPanel>

@@ -66,11 +66,12 @@ export default function ProfileMenu(): JSX.Element | null {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-label={user.full_name}
       >
         <span className="profile-menu__avatar" aria-hidden>
           {initial}
         </span>
-        <span>{user.full_name}</span>
+        <span className="profile-menu__name">{user.full_name}</span>
         <span className="profile-menu__chevron" aria-hidden />
       </button>
 
