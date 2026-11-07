@@ -620,6 +620,15 @@ export default function PlatformTenantDetailPage(): JSX.Element {
             <TenantStatusBadge status={tenant.status} />
             <TypeBadge isDemo={tenant.isDemo} />
           </div>
+          <div className="platform-muted" style={{ marginTop: 8, fontSize: 13 }}>
+            Kaynak:{' '}
+            {tenant.sourceLabel?.trim() ||
+              (tenant.sourceKind === 'WEBSITE_ORDER'
+                ? `Web sitesi sipariş${tenant.sourceRef ? ` #${tenant.sourceRef}` : ''}`
+                : tenant.sourceKind === 'DEMO_FORM'
+                  ? 'Demo formu'
+                  : 'Elle oluşturuldu')}
+          </div>
         </div>
         <div className="stat-panel">
           <div className="stat-panel__head">

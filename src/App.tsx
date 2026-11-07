@@ -26,6 +26,7 @@ import SimpleSettingsPage from './pages/settings/SimpleSettingsPage'
 import BackupPage from './pages/backup/BackupPage'
 import CooperativesPage from './pages/cooperatives/CooperativesPage'
 import PlaceholderPage from './pages/PlaceholderPage'
+import DemoConfirmPage from './pages/DemoConfirmPage'
 import PlatformApp from './pages/platform/PlatformApp'
 import AutoBackupRunner from './components/backup/AutoBackupRunner'
 import { getPageTitle, SIMPLIFIED_UI } from './config/navigation'
@@ -109,6 +110,7 @@ export default function App(): JSX.Element {
               <CooperativeProvider>
                 <Routes>
                   <Route path="/login" element={<LoginPage />} />
+                  <Route path="/demo-onay" element={<DemoConfirmPage />} />
                   <Route
                     path="/platform/*"
                     element={

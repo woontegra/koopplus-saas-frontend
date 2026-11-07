@@ -96,11 +96,47 @@ export type PlatformTenantDetail = {
   licenseKey: string
   licenseActivatedAt: string | null
   licenseStatus: 'PENDING' | 'ACTIVATED' | string
+  sourceKind?: 'MANUAL' | 'WEBSITE_ORDER' | 'DEMO_FORM' | string
+  sourceRef?: string | null
+  sourceLabel?: string | null
   settings: PlatformTenantSettings | null
   extensions: PlatformUsageExtension[]
   emailLogs?: PlatformEmailLog[]
   createdAt: string
   updatedAt: string
+}
+
+export type PlatformIntegrationEvent = {
+  id: string
+  kind: string
+  orderId: string | null
+  email: string | null
+  payload: unknown
+  result: 'SUCCESS' | 'ERROR' | string
+  resultAction: string | null
+  error: string | null
+  httpStatus: number | null
+  tenantId: string | null
+  createdAt: string
+}
+
+export type PlatformDemoRequest = {
+  id: string
+  fullName: string
+  email: string
+  phone: string
+  cooperativeName: string
+  city: string
+  district: string
+  clientIp: string | null
+  status: 'PENDING' | 'CONFIRMED' | 'REJECTED' | string
+  confirmTokenExpiresAt: string
+  confirmedAt: string | null
+  rejectedReason: string | null
+  kvkkConsentAt: string
+  kvkkConsentVersion: string
+  tenantId: string | null
+  createdAt: string
 }
 
 export type PlatformCreateTenantResult = {
@@ -524,6 +560,22 @@ export const platformApi = {
     }>(`/api/platform/tenants/${tid(id)}/welcome-email`, 'POST', {}),
 
   pdfHealth: () => req<PlatformPdfProbe>('/api/platform/health/pdf', 'GET'),
+
+  // ---- Web sitesi entegrasyonu ----
+  listIntegrationEvents: (params: { limit?: number; offset?: number; kind?: string; result?: string } = {}) =>
+    req<{ total: number; limit: number; offset: number; items: PlatformIntegrationEvent[] }>(
+      `/api/platform/integrations/events${qs(params)}`,
+      'GET'
+    ),
+
+  retryIntegrationEvent: (id: string) =>
+    req<unknown>(`/api/platform/integrations/events/${tid(id)}/retry`, 'POST', {}),
+
+  listDemoRequests: (params: { status?: string; limit?: number } = {}) =>
+    req<{ total: number; limit: number; items: PlatformDemoRequest[] }>(
+      `/api/platform/demo-requests${qs(params)}`,
+      'GET'
+    ),
 
   // ---- Denetim ----
   auditLogs: async (
