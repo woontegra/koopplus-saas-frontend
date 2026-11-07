@@ -58,16 +58,22 @@ export type AccessBlock = {
 
 export type LoginResponse = {
   token: string
-  /** Uzun ömürlü yenileme jetonu — httpOnly cookie yok (cross-origin); localStorage. */
+  /** Refresh httpOnly cookie'de; gövdede dönmeyebilir. */
   refreshToken?: string | null
   user: AuthUser
   memberships: AuthMembership[]
   accessBlock?: AccessBlock | null
+  requires2fa?: boolean
+  requires2faSetup?: boolean
+  challengeToken?: string
+  otpauthUrl?: string
+  qrDataUrl?: string
+  recoveryCodes?: string[]
 }
 
 export type RefreshResponse = {
   token: string
-  refreshToken: string
+  refreshToken?: string
 }
 
 export type MeResponse = {

@@ -1762,7 +1762,8 @@ export interface ChangeOwnSecurityQuestionPayload extends SecurityQuestionInput 
 }
 
 export interface PasswordResetQuestionResult {
-  security_question: string
+  security_question: string | null
+  message?: string
 }
 
 export interface ResetPasswordWithSecurityPayload {

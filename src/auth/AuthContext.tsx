@@ -7,22 +7,30 @@ import {
   useState,
   type ReactNode
 } from 'react'
-import { loginRequest, logoutRequest, meRequest } from '../api/auth'
+import {
+  confirm2faSetupRequest,
+  isTwoFaChallenge,
+  isTwoFaSetup,
+  loginRequest,
+  logoutRequest,
+  meRequest,
+  verify2faRequest,
+  type LoginResult,
+  type TwoFaSetupChallenge
+} from '../api/auth'
 import { ApiError, silentRefreshAccessToken } from '../api/client'
 import type { AccessBlock, AuthMembership, AuthUser, MembershipRole } from '../api/types'
+import { SESSION_CHANNEL, type SessionBroadcast } from './idleSession'
 import {
   clearSession,
   clearTenantId,
   loadRememberedEmail,
-  loadRefreshToken,
   loadTenantId,
   loadToken,
   saveRememberedEmail,
   clearRememberedEmail,
-  saveRefreshToken,
   saveTenantId,
-  saveToken,
-  clearRefreshToken
+  saveToken
 } from './session'
 
 /** Masaüstü Sidebar/AppLayout uyumu: full_name + role (aktif kooperatif rolü). */
@@ -46,6 +54,10 @@ export function roleLabel(role: MembershipRole): string {
   }
 }
 
+export type Pending2fa =
+  | { kind: 'verify'; challengeToken: string }
+  | ({ kind: 'setup' } & TwoFaSetupChallenge)
+
 type AuthContextValue = {
   ready: boolean
   bootError: string | null
@@ -58,6 +70,7 @@ type AuthContextValue = {
   /** Süresi dolmuş / askıya alınmış kooperatif — giriş sonrası engel ekranı. */
   accessBlock: AccessBlock | null
   rememberedEmail: string | null
+  pending2fa: Pending2fa | null
   canWrite: boolean
   isAdmin: boolean
   canManageInterest: boolean
@@ -65,7 +78,9 @@ type AuthContextValue = {
   retryBootstrap: () => Promise<void>
   /** meRequest + güvenlik durumu — PasswordSection / kooperatif oluşturma sonrası. */
   refreshSession: () => Promise<void>
-  login: (email: string, password: string, remember: boolean) => Promise<void>
+  login: (email: string, password: string, remember: boolean) => Promise<LoginResult>
+  complete2fa: (code: string) => Promise<void>
+  cancel2fa: () => void
   logout: () => Promise<void>
   selectTenant: (tenantId: string) => void
   clearTenant: () => void
@@ -96,20 +111,20 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   const [accessBlock, setAccessBlock] = useState<AccessBlock | null>(null)
   const [hasSecurityQuestion, setHasSecurityQuestion] = useState(true)
   const [rememberedEmail, setRememberedEmail] = useState<string | null>(loadRememberedEmail())
+  const [pending2fa, setPending2fa] = useState<Pending2fa | null>(null)
+  const [pendingRemember, setPendingRemember] = useState<{ email: string; remember: boolean } | null>(
+    null
+  )
 
   const applySession = useCallback(
     (
       nextToken: string,
       nextUser: AuthUser,
       nextMemberships: AuthMembership[],
-      nextAccessBlock?: AccessBlock | null,
-      nextRefresh?: string | null
+      nextAccessBlock?: AccessBlock | null
     ) => {
       const nextTenant = resolveTenantId(nextMemberships, loadTenantId())
       saveToken(nextToken)
-      if (nextRefresh) {
-        saveRefreshToken(nextRefresh)
-      }
       if (nextTenant) {
         saveTenantId(nextTenant)
       } else {
@@ -120,6 +135,8 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       setMemberships(nextMemberships)
       setTenantId(nextTenant)
       setAccessBlock(nextAccessBlock ?? null)
+      setPending2fa(null)
+      setPendingRemember(null)
       setBootError(null)
     },
     []
@@ -133,6 +150,8 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     setTenantId(null)
     setAccessBlock(null)
     setHasSecurityQuestion(true)
+    setPending2fa(null)
+    setPendingRemember(null)
   }, [])
 
   const loadSecurityStatus = useCallback(async (): Promise<void> => {
@@ -148,16 +167,10 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
 
   const bootstrapSession = useCallback(async (): Promise<void> => {
     let existing = loadToken()
-    if (!existing && !loadRefreshToken()) {
-      setReady(true)
-      setBootError(null)
-      return
-    }
-
     setReady(false)
     setBootError(null)
     try {
-      if (!existing && loadRefreshToken()) {
+      if (!existing) {
         existing = (await silentRefreshAccessToken()) ?? null
       }
       if (!existing) {
@@ -170,7 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
         applySession(existing, me.user, me.memberships, me.accessBlock)
         await loadSecurityStatus()
       } catch (error) {
-        if (error instanceof ApiError && error.status === 401 && loadRefreshToken()) {
+        if (error instanceof ApiError && error.status === 401) {
           const next = await silentRefreshAccessToken()
           if (next) {
             const me = await meRequest(next)
@@ -202,21 +215,27 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     void bootstrapSession()
   }, [bootstrapSession])
 
-  // Başka sekmeden gelen access token güncellemesi
+  // Çoklu sekme — BroadcastChannel ile access token senkronu
   useEffect(() => {
-    const onStorage = (ev: StorageEvent): void => {
-      if (ev.key === 'koopplus.saas.accessToken' && ev.newValue) {
-        setToken(ev.newValue)
+    let ch: BroadcastChannel
+    try {
+      ch = new BroadcastChannel(SESSION_CHANNEL)
+    } catch {
+      return
+    }
+    ch.onmessage = (ev: MessageEvent<SessionBroadcast>) => {
+      const msg = ev.data
+      if (!msg || typeof msg !== 'object') return
+      if (msg.type === 'tokens' && msg.access) {
+        saveToken(msg.access)
+        setToken(msg.access)
       }
-      if (ev.key === 'koopplus.saas.accessToken' && ev.newValue === null) {
-        setToken(null)
-        setUser(null)
-        setMemberships([])
+      if (msg.type === 'logout') {
+        resetSession()
       }
     }
-    window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
-  }, [])
+    return () => ch.close()
+  }, [resetSession])
 
   const refreshSession = useCallback(async (): Promise<void> => {
     const existing = token ?? loadToken()
@@ -235,7 +254,17 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   const login = useCallback(
     async (email: string, password: string, remember: boolean) => {
       const data = await loginRequest(email.trim(), password)
-      applySession(data.token, data.user, data.memberships, data.accessBlock, data.refreshToken)
+      if (isTwoFaSetup(data)) {
+        setPendingRemember({ email: email.trim().toLowerCase(), remember })
+        setPending2fa({ kind: 'setup', ...data })
+        return data
+      }
+      if (isTwoFaChallenge(data)) {
+        setPendingRemember({ email: email.trim().toLowerCase(), remember })
+        setPending2fa({ kind: 'verify', challengeToken: data.challengeToken })
+        return data
+      }
+      applySession(data.token, data.user, data.memberships, data.accessBlock)
       await loadSecurityStatus()
       if (remember) {
         saveRememberedEmail(email.trim().toLowerCase())
@@ -244,9 +273,37 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
         clearRememberedEmail()
         setRememberedEmail(null)
       }
+      return data
     },
     [applySession, loadSecurityStatus]
   )
+
+  const complete2fa = useCallback(
+    async (code: string) => {
+      if (!pending2fa) throw new Error('2FA beklenmiyor')
+      const data =
+        pending2fa.kind === 'setup'
+          ? await confirm2faSetupRequest(pending2fa.challengeToken, code)
+          : await verify2faRequest(pending2fa.challengeToken, code)
+      applySession(data.token, data.user, data.memberships, data.accessBlock)
+      await loadSecurityStatus()
+      if (pendingRemember) {
+        if (pendingRemember.remember) {
+          saveRememberedEmail(pendingRemember.email)
+          setRememberedEmail(pendingRemember.email)
+        } else {
+          clearRememberedEmail()
+          setRememberedEmail(null)
+        }
+      }
+    },
+    [applySession, loadSecurityStatus, pending2fa, pendingRemember]
+  )
+
+  const cancel2fa = useCallback(() => {
+    setPending2fa(null)
+    setPendingRemember(null)
+  }, [])
 
   const logout = useCallback(async () => {
     const current = token ?? loadToken()
@@ -257,7 +314,6 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     } catch {
       // Çıkışta sunucu hatası olsa da yerel oturum kapanır
     } finally {
-      clearRefreshToken()
       resetSession()
     }
   }, [resetSession, token])
@@ -313,6 +369,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       activeRole,
       accessBlock,
       rememberedEmail,
+      pending2fa,
       canWrite,
       isAdmin,
       canManageInterest: isAdmin,
@@ -320,6 +377,8 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       retryBootstrap: bootstrapSession,
       refreshSession,
       login,
+      complete2fa,
+      cancel2fa,
       logout,
       selectTenant,
       clearTenant
@@ -334,12 +393,15 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       activeMembership,
       activeRole,
       accessBlock,
+      rememberedEmail,
+      pending2fa,
       canWrite,
       isAdmin,
-      rememberedEmail,
       bootstrapSession,
       refreshSession,
       login,
+      complete2fa,
+      cancel2fa,
       logout,
       selectTenant,
       clearTenant

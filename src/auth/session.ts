@@ -1,40 +1,49 @@
-const TOKEN_KEY = 'koopplus.saas.accessToken'
-const REFRESH_KEY = 'koopplus.saas.refreshToken'
+/** Access token yalnızca bellek — localStorage'a yazılmaz. */
+let memoryAccessToken: string | null = null
+
 const TENANT_KEY = 'koopplus.saas.tenantId'
 const REMEMBER_EMAIL_KEY = 'koopplus.saas.rememberEmail'
 const SUPPORT_KEY = 'koopplus.saas.support'
 const LAST_ACTIVITY_KEY = 'koopplus.saas.lastActivityAt'
+/** Eski localStorage jetonlarını bir kez temizle (cookie geçişi). */
+const LEGACY_ACCESS_KEY = 'koopplus.saas.accessToken'
+const LEGACY_REFRESH_KEY = 'koopplus.saas.refreshToken'
+
+function scrubLegacyTokens(): void {
+  try {
+    localStorage.removeItem(LEGACY_ACCESS_KEY)
+    localStorage.removeItem(LEGACY_REFRESH_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
+scrubLegacyTokens()
 
 export function loadToken(): string | null {
-  try {
-    return localStorage.getItem(TOKEN_KEY)
-  } catch {
-    return null
-  }
+  return memoryAccessToken
 }
 
 export function saveToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token)
+  memoryAccessToken = token
+  scrubLegacyTokens()
 }
 
 export function clearToken(): void {
-  localStorage.removeItem(TOKEN_KEY)
+  memoryAccessToken = null
 }
 
+/** Refresh httpOnly cookie'de; istemci gövdesinde tutulmaz. */
 export function loadRefreshToken(): string | null {
-  try {
-    return localStorage.getItem(REFRESH_KEY)
-  } catch {
-    return null
-  }
+  return null
 }
 
-export function saveRefreshToken(token: string): void {
-  localStorage.setItem(REFRESH_KEY, token)
+export function saveRefreshToken(_token: string): void {
+  scrubLegacyTokens()
 }
 
 export function clearRefreshToken(): void {
-  localStorage.removeItem(REFRESH_KEY)
+  scrubLegacyTokens()
 }
 
 export function loadLastActivityAt(): number {

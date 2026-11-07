@@ -1,11 +1,6 @@
 import { apiUrl } from './config'
 import type { ApiEnvelope } from './types'
-import {
-  loadRefreshToken,
-  loadToken,
-  saveRefreshToken,
-  saveToken
-} from '../auth/session'
+import { loadToken, saveToken } from '../auth/session'
 import { SESSION_CHANNEL, type SessionBroadcast } from '../auth/idleSession'
 
 export class ApiError extends Error {
@@ -56,10 +51,10 @@ function mapHttpError(status: number, fallback: string): string {
 
 let refreshInFlight: Promise<string | null> | null = null
 
-function broadcastTokens(access: string, refresh: string | null): void {
+function broadcastTokens(access: string): void {
   try {
     const ch = new BroadcastChannel(SESSION_CHANNEL)
-    const msg: SessionBroadcast = { type: 'tokens', access, refresh }
+    const msg: SessionBroadcast = { type: 'tokens', access, refresh: null }
     ch.postMessage(msg)
     ch.close()
   } catch {
@@ -67,12 +62,10 @@ function broadcastTokens(access: string, refresh: string | null): void {
   }
 }
 
-/** Tek seferlik sessiz access yenileme (paralel istekler paylaşır). */
+/** Tek seferlik sessiz access yenileme — httpOnly cookie + credentials. */
 export async function silentRefreshAccessToken(): Promise<string | null> {
   if (refreshInFlight) return refreshInFlight
   refreshInFlight = (async () => {
-    const refreshToken = loadRefreshToken()
-    if (!refreshToken) return null
     try {
       const headers: Record<string, string> = {
         Accept: 'application/json',
@@ -81,13 +74,13 @@ export async function silentRefreshAccessToken(): Promise<string | null> {
       const response = await fetch(apiUrl('/api/auth/refresh'), {
         method: 'POST',
         headers,
-        body: JSON.stringify({ refreshToken })
+        credentials: 'include',
+        body: JSON.stringify({})
       })
-      const payload = (await response.json()) as ApiEnvelope<{ token: string; refreshToken: string }>
+      const payload = (await response.json()) as ApiEnvelope<{ token: string }>
       if (!response.ok || !payload || payload.success !== true) return null
       saveToken(payload.data.token)
-      saveRefreshToken(payload.data.refreshToken)
-      broadcastTokens(payload.data.token, payload.data.refreshToken)
+      broadcastTokens(payload.data.token)
       return payload.data.token
     } catch {
       return null
@@ -119,6 +112,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     response = await fetch(apiUrl(path), {
       method: options.method ?? (options.body !== undefined ? 'POST' : 'GET'),
       headers,
+      credentials: 'include',
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined
     })
   } catch {

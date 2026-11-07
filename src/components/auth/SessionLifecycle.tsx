@@ -12,10 +12,8 @@ import {
 } from '../../auth/idleSession'
 import {
   loadLastActivityAt,
-  loadRefreshToken,
   loadToken,
   saveLastActivityAt,
-  saveRefreshToken,
   saveToken
 } from '../../auth/session'
 import IdleWarningModal from './IdleWarningModal'
@@ -141,8 +139,8 @@ export default function SessionLifecycle(): JSX.Element {
       refreshTimerRef.current = setTimeout(() => {
         void silentRefreshAccessToken().then((next) => {
           if (next) schedule(next)
-          else if (loadRefreshToken()) {
-            // kısa süre sonra tekrar dene
+          else {
+            // cookie henüz hazır olmayabilir — kısa süre sonra tekrar dene
             refreshTimerRef.current = setTimeout(() => {
               void silentRefreshAccessToken().then((n) => n && schedule(n))
             }, 30_000)
@@ -185,7 +183,6 @@ export default function SessionLifecycle(): JSX.Element {
       }
       if (msg.type === 'tokens') {
         saveToken(msg.access)
-        if (msg.refresh) saveRefreshToken(msg.refresh)
       }
     }
     return () => ch.close()

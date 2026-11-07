@@ -23,7 +23,16 @@ export default function ForgotPasswordModal({ onClose }: ForgotPasswordModalProp
     const res = await window.api.auth.getPasswordResetQuestion(email.trim())
     setSubmitting(false)
     if (res.success && res.data) {
-      setSecurityQuestion(res.data.security_question)
+      const q = res.data.security_question
+      if (!q) {
+        // E-posta yok / soru yok — aynı genel mesaj (enumeration yok)
+        setError(
+          res.data.message ??
+            'Eğer bu e-posta kayıtlıysa ve güvenlik sorusu tanımlıysa devam edebilirsiniz. Aksi halde iletişime geçin.'
+        )
+        return
+      }
+      setSecurityQuestion(q)
       setStep('answer')
       return
     }

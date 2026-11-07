@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { ApiError } from '../api/client'
+import { isTwoFaChallenge, isTwoFaSetup } from '../api/auth'
 import { useAuth } from '../auth/AuthContext'
 import ForgotPasswordModal from '../components/auth/ForgotPasswordModal'
 import BrandLogo from '../components/layout/BrandLogo'
@@ -36,7 +37,19 @@ function loginErrorMessage(error: unknown): string {
 }
 
 export default function LoginPage(): JSX.Element {
-  const { ready, token, user, tenantId, memberships, accessBlock, rememberedEmail, login } = useAuth()
+  const {
+    ready,
+    token,
+    user,
+    tenantId,
+    memberships,
+    accessBlock,
+    rememberedEmail,
+    pending2fa,
+    login,
+    complete2fa,
+    cancel2fa
+  } = useAuth()
   const location = useLocation()
   const from = (location.state as { from?: string } | null)?.from
 
@@ -47,6 +60,8 @@ export default function LoginPage(): JSX.Element {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [showForgotModal, setShowForgotModal] = useState(false)
+  const [otpCode, setOtpCode] = useState('')
+  const [recoveryAck, setRecoveryAck] = useState(false)
 
   useEffect(() => {
     if (rememberedEmail) {
@@ -74,8 +89,28 @@ export default function LoginPage(): JSX.Element {
     setSubmitting(true)
     setError('')
     try {
-      await login(email, password, remember)
-      // Oturum state güncellenince üstteki Navigate yönlendirir.
+      const data = await login(email, password, remember)
+      if (isTwoFaChallenge(data) || isTwoFaSetup(data)) {
+        setOtpCode('')
+        setRecoveryAck(false)
+      }
+    } catch (err) {
+      setError(loginErrorMessage(err))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const onVerify2fa = async (event: FormEvent): Promise<void> => {
+    event.preventDefault()
+    if (pending2fa?.kind === 'setup' && !recoveryAck) {
+      setError('Kurtarma kodlarını kaydettiğinizi onaylayın.')
+      return
+    }
+    setSubmitting(true)
+    setError('')
+    try {
+      await complete2fa(otpCode.trim())
     } catch (err) {
       setError(loginErrorMessage(err))
     } finally {
@@ -137,84 +172,175 @@ export default function LoginPage(): JSX.Element {
         </section>
 
         <section className="login-stage__aside">
-          <form className="login-card login-stage__reveal login-stage__reveal--4" onSubmit={onSubmit}>
-            <div className="login-card__mark">
-              <img src={koopPlusMark} alt="" width={36} height={36} draggable={false} />
-            </div>
-            <h2 className="login-card__title">Tekrar hoş geldiniz</h2>
-            <p className="login-card__subtitle">Hesabınıza giriş yaparak devam edin.</p>
-
-            {error ? (
-              <div className="alert alert-error" role="alert">
-                {error}
+          {pending2fa ? (
+            <form className="login-card login-stage__reveal login-stage__reveal--4" onSubmit={onVerify2fa}>
+              <div className="login-card__mark">
+                <img src={koopPlusMark} alt="" width={36} height={36} draggable={false} />
               </div>
-            ) : null}
+              <h2 className="login-card__title">
+                {pending2fa.kind === 'setup' ? 'İki adımlı doğrulama kurulumu' : 'Doğrulama kodu'}
+              </h2>
+              <p className="login-card__subtitle">
+                {pending2fa.kind === 'setup'
+                  ? 'Authenticator uygulamanızla QR kodu tarayın, kurtarma kodlarını kaydedin, ardından 6 haneli kodu girin.'
+                  : 'Authenticator uygulamanızdaki 6 haneli kodu veya bir kurtarma kodunu girin.'}
+              </p>
 
-            <div className="login-field">
-              <label htmlFor="login-email">E-posta Adresi</label>
-              <div className="login-field__control">
-                <IconUser size={18} className="login-field__icon" />
-                <input
-                  id="login-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
-                  autoFocus
-                  required
-                  disabled={submitting}
-                />
+              {error ? (
+                <div className="alert alert-error" role="alert">
+                  {error}
+                </div>
+              ) : null}
+
+              {pending2fa.kind === 'setup' ? (
+                <>
+                  {pending2fa.qrDataUrl ? (
+                    <div style={{ textAlign: 'center', marginBottom: 12 }}>
+                      <img
+                        src={pending2fa.qrDataUrl}
+                        alt="TOTP QR kodu"
+                        width={180}
+                        height={180}
+                        style={{ borderRadius: 8 }}
+                      />
+                    </div>
+                  ) : null}
+                  <div className="alert" role="status" style={{ marginBottom: 12, fontSize: 13 }}>
+                    <strong>Kurtarma kodları (bir kez gösterilir):</strong>
+                    <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontFamily: 'monospace' }}>
+                      {pending2fa.recoveryCodes.map((c) => (
+                        <li key={c}>{c}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <label className="login-card__remember" style={{ marginBottom: 12 }}>
+                    <input
+                      type="checkbox"
+                      checked={recoveryAck}
+                      onChange={(e) => setRecoveryAck(e.target.checked)}
+                      disabled={submitting}
+                    />
+                    Kurtarma kodlarını güvenli yere kaydettim
+                  </label>
+                </>
+              ) : null}
+
+              <div className="login-field">
+                <label htmlFor="login-otp">Doğrulama kodu</label>
+                <div className="login-field__control">
+                  <IconLock size={18} className="login-field__icon" />
+                  <input
+                    id="login-otp"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value)}
+                    autoFocus
+                    required
+                    disabled={submitting}
+                    placeholder="6 haneli kod"
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="login-field">
-              <label htmlFor="login-password">Şifre</label>
-              <div className="login-field__control">
-                <IconLock size={18} className="login-field__icon" />
-                <input
-                  id="login-password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  required
-                  minLength={8}
-                  disabled={submitting}
-                />
-                <button
-                  type="button"
-                  className="login-field__toggle"
-                  onClick={() => setShowPassword((value) => !value)}
-                  aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
-                >
-                  {showPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="login-card__meta">
-              <label className="login-card__remember">
-                <input
-                  type="checkbox"
-                  checked={remember}
-                  onChange={(e) => setRemember(e.target.checked)}
-                  disabled={submitting}
-                />
-                Beni hatırla
-              </label>
+              <button className="login-card__submit" type="submit" disabled={submitting}>
+                {submitting ? 'Doğrulanıyor…' : 'Doğrula'}
+              </button>
               <button
                 type="button"
                 className="login-card__forgot"
-                onClick={() => setShowForgotModal(true)}
+                style={{ marginTop: 12, width: '100%' }}
+                onClick={() => {
+                  cancel2fa()
+                  setError('')
+                  setOtpCode('')
+                }}
+                disabled={submitting}
               >
-                Şifremi Unuttum
+                Geri dön
               </button>
-            </div>
+            </form>
+          ) : (
+            <form className="login-card login-stage__reveal login-stage__reveal--4" onSubmit={onSubmit}>
+              <div className="login-card__mark">
+                <img src={koopPlusMark} alt="" width={36} height={36} draggable={false} />
+              </div>
+              <h2 className="login-card__title">Tekrar hoş geldiniz</h2>
+              <p className="login-card__subtitle">Hesabınıza giriş yaparak devam edin.</p>
 
-            <button className="login-card__submit" type="submit" disabled={submitting}>
-              {submitting ? 'Giriş yapılıyor…' : 'Giriş Yap'}
-            </button>
-          </form>
+              {error ? (
+                <div className="alert alert-error" role="alert">
+                  {error}
+                </div>
+              ) : null}
+
+              <div className="login-field">
+                <label htmlFor="login-email">E-posta Adresi</label>
+                <div className="login-field__control">
+                  <IconUser size={18} className="login-field__icon" />
+                  <input
+                    id="login-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                    autoFocus
+                    required
+                    disabled={submitting}
+                  />
+                </div>
+              </div>
+
+              <div className="login-field">
+                <label htmlFor="login-password">Şifre</label>
+                <div className="login-field__control">
+                  <IconLock size={18} className="login-field__icon" />
+                  <input
+                    id="login-password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                    required
+                    minLength={8}
+                    disabled={submitting}
+                  />
+                  <button
+                    type="button"
+                    className="login-field__toggle"
+                    onClick={() => setShowPassword((value) => !value)}
+                    aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
+                  >
+                    {showPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="login-card__meta">
+                <label className="login-card__remember">
+                  <input
+                    type="checkbox"
+                    checked={remember}
+                    onChange={(e) => setRemember(e.target.checked)}
+                    disabled={submitting}
+                  />
+                  Beni hatırla
+                </label>
+                <button
+                  type="button"
+                  className="login-card__forgot"
+                  onClick={() => setShowForgotModal(true)}
+                >
+                  Şifremi Unuttum
+                </button>
+              </div>
+
+              <button className="login-card__submit" type="submit" disabled={submitting}>
+                {submitting ? 'Giriş yapılıyor…' : 'Giriş Yap'}
+              </button>
+            </form>
+          )}
         </section>
       </div>
 
