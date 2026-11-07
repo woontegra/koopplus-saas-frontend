@@ -1,15 +1,56 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import type { ChangeOwnPasswordPayload } from '@shared/types'
 
 interface ChangeOwnPasswordFormProps {
   onSuccess: () => void | Promise<void>
   submitLabel?: string
+  /** Submit ile aynı satırda gösterilecek ek eylem (ör. Çıkış Yap). */
+  secondaryAction?: ReactNode
+}
+
+function PasswordField({
+  label,
+  autoComplete,
+  value,
+  onChange,
+  autoFocus
+}: {
+  label: string
+  autoComplete: string
+  value: string
+  onChange: (value: string) => void
+  autoFocus?: boolean
+}): JSX.Element {
+  const [visible, setVisible] = useState(false)
+  return (
+    <div className="form-group auth-password-field">
+      <label>{label}</label>
+      <div className="auth-password-field__row">
+        <input
+          type={visible ? 'text' : 'password'}
+          autoComplete={autoComplete}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          autoFocus={autoFocus}
+        />
+        <button
+          type="button"
+          className="btn btn-xs auth-password-field__toggle"
+          onClick={() => setVisible((v) => !v)}
+          aria-label={visible ? 'Şifreyi gizle' : 'Şifreyi göster'}
+        >
+          {visible ? 'Gizle' : 'Göster'}
+        </button>
+      </div>
+    </div>
+  )
 }
 
 /** Kendi şifresini değiştir — window.api.auth.changeOwnPassword (/api/auth/change-own-password). */
 export default function ChangeOwnPasswordForm({
   onSuccess,
-  submitLabel = 'Şifreyi Güncelle'
+  submitLabel = 'Şifreyi Güncelle',
+  secondaryAction
 }: ChangeOwnPasswordFormProps): JSX.Element {
   const [form, setForm] = useState<ChangeOwnPasswordPayload>({
     current_password: '',
@@ -36,42 +77,34 @@ export default function ChangeOwnPasswordForm({
   }
 
   return (
-    <form onSubmit={(e) => void submit(e)} className="change-password-form">
+    <form onSubmit={(e) => void submit(e)} className="change-password-form change-password-form--stack">
       {error && <div className="alert alert-error">{error}</div>}
-      <div className="form-grid">
-        <div className="form-group">
-          <label>Mevcut Şifre</label>
-          <input
-            type="password"
-            autoComplete="current-password"
-            value={form.current_password}
-            onChange={(e) => setForm({ ...form, current_password: e.target.value })}
-            autoFocus
-          />
-        </div>
-        <div className="form-group">
-          <label>Yeni Şifre</label>
-          <input
-            type="password"
-            autoComplete="new-password"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-          />
-        </div>
-        <div className="form-group">
-          <label>Yeni Şifre Tekrar</label>
-          <input
-            type="password"
-            autoComplete="new-password"
-            value={form.password_confirm}
-            onChange={(e) => setForm({ ...form, password_confirm: e.target.value })}
-          />
-        </div>
+      <div className="form-grid form-grid--stack">
+        <PasswordField
+          label="Mevcut Şifre"
+          autoComplete="current-password"
+          value={form.current_password}
+          onChange={(current_password) => setForm({ ...form, current_password })}
+          autoFocus
+        />
+        <PasswordField
+          label="Yeni Şifre"
+          autoComplete="new-password"
+          value={form.password}
+          onChange={(password) => setForm({ ...form, password })}
+        />
+        <PasswordField
+          label="Yeni Şifre Tekrar"
+          autoComplete="new-password"
+          value={form.password_confirm}
+          onChange={(password_confirm) => setForm({ ...form, password_confirm })}
+        />
       </div>
-      <div className="settings-actions">
+      <div className="settings-actions auth-gate-actions">
         <button type="submit" className="btn btn-primary" disabled={saving}>
           {saving ? 'Kaydediliyor...' : submitLabel}
         </button>
+        {secondaryAction}
       </div>
     </form>
   )

@@ -32,12 +32,12 @@ export default function ForcePasswordChange(): JSX.Element {
                 toast.success('Şifre değiştirildi', 'Şifreniz güncellendi.')
                 await refreshSession()
               }}
+              secondaryAction={
+                <button type="button" className="btn" onClick={() => void logout()}>
+                  Çıkış Yap
+                </button>
+              }
             />
-            <div className="settings-actions" style={{ marginTop: 10 }}>
-              <button type="button" className="btn btn-sm" onClick={() => void logout()}>
-                Çıkış Yap
-              </button>
-            </div>
           </div>
         </section>
       </div>

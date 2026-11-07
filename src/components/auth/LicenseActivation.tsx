@@ -4,6 +4,19 @@ import { useAuth } from '../../auth/AuthContext'
 import { useActionToast } from '../../hooks/useActionToast'
 import koopPlusMark from '../../assets/brand/koopPlusFavicon.png'
 
+/** Yapıştırılan / yazılan anahtarı KOOP-XXXX-XXXX-XXXX-XXXX biçimine getirir. */
+export function formatLicenseKeyInput(raw: string): string {
+  const compact = raw.toUpperCase().replace(/[^A-Z0-9]/g, '')
+  const body = compact.startsWith('KOOP') ? compact.slice(4) : compact
+  const limited = body.slice(0, 16)
+  const chunks: string[] = []
+  for (let i = 0; i < limited.length; i += 4) {
+    chunks.push(limited.slice(i, i + 4))
+  }
+  if (chunks.length === 0) return compact.startsWith('KOOP') ? 'KOOP-' : ''
+  return `KOOP-${chunks.join('-')}`
+}
+
 /** Şifre değişikliğinden sonra — lisans anahtarı ile kooperatif etkinleştirme. */
 export default function LicenseActivation(): JSX.Element {
   const { user, memberships, tenantId, selectTenant, refreshSession, logout } = useAuth()
@@ -64,8 +77,8 @@ export default function LicenseActivation(): JSX.Element {
               geldin e-postasındaki lisans anahtarını girin.
             </p>
             {pending.length > 1 && (
-              <label className="field" style={{ display: 'block', marginBottom: 12 }}>
-                <span>Kooperatif</span>
+              <label className="auth-field">
+                <span className="auth-field__label">Kooperatif</span>
                 <select
                   value={selectedId}
                   onChange={(e) => selectTenant(e.target.value)}
@@ -79,18 +92,20 @@ export default function LicenseActivation(): JSX.Element {
                 </select>
               </label>
             )}
-            <form onSubmit={(e) => void onSubmit(e)}>
-              <label className="field" style={{ display: 'block', marginBottom: 12 }}>
-                <span>Lisans anahtarı</span>
+            <form onSubmit={(e) => void onSubmit(e)} className="license-activate-form">
+              <label className="auth-field">
+                <span className="auth-field__label">Lisans anahtarı</span>
                 <input
                   type="text"
+                  className="license-key-input"
                   autoComplete="off"
                   spellCheck={false}
                   placeholder="KOOP-XXXX-XXXX-XXXX-XXXX"
                   value={key}
-                  onChange={(e) => setKey(e.target.value.toUpperCase())}
+                  onChange={(e) => setKey(formatLicenseKeyInput(e.target.value))}
                   disabled={busy}
                   required
+                  inputMode="text"
                 />
               </label>
               {error && (
@@ -98,15 +113,15 @@ export default function LicenseActivation(): JSX.Element {
                   {error}
                 </div>
               )}
-              <button type="submit" className="btn btn-primary" disabled={busy || !selectedId}>
-                {busy ? 'Kontrol ediliyor...' : 'Etkinleştir'}
-              </button>
+              <div className="settings-actions auth-gate-actions">
+                <button type="submit" className="btn btn-primary" disabled={busy || !selectedId}>
+                  {busy ? 'Kontrol ediliyor...' : 'Etkinleştir'}
+                </button>
+                <button type="button" className="btn" onClick={() => void logout()}>
+                  Çıkış Yap
+                </button>
+              </div>
             </form>
-            <div className="settings-actions" style={{ marginTop: 10 }}>
-              <button type="button" className="btn btn-sm" onClick={() => void logout()}>
-                Çıkış Yap
-              </button>
-            </div>
           </div>
         </section>
       </div>
