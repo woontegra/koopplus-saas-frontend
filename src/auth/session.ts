@@ -2,6 +2,8 @@
 let memoryAccessToken: string | null = null
 
 const TENANT_KEY = 'koopplus.saas.tenantId'
+/** Aktif tenant temizlense bile üst çubuk / rol için son seçilen kooperatif. */
+const LAST_TENANT_KEY = 'koopplus.saas.lastTenantId'
 const REMEMBER_EMAIL_KEY = 'koopplus.saas.rememberEmail'
 const SUPPORT_KEY = 'koopplus.saas.support'
 const LAST_ACTIVITY_KEY = 'koopplus.saas.lastActivityAt'
@@ -91,6 +93,19 @@ export function loadTenantId(): string | null {
 
 export function saveTenantId(tenantId: string): void {
   localStorage.setItem(TENANT_KEY, tenantId)
+  try {
+    localStorage.setItem(LAST_TENANT_KEY, tenantId)
+  } catch {
+    /* ignore */
+  }
+}
+
+export function loadLastTenantId(): string | null {
+  try {
+    return localStorage.getItem(LAST_TENANT_KEY) || localStorage.getItem(TENANT_KEY)
+  } catch {
+    return null
+  }
 }
 
 export function clearTenantId(): void {

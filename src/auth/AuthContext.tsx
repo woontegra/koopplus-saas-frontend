@@ -24,6 +24,7 @@ import { SESSION_CHANNEL, type SessionBroadcast } from './idleSession'
 import {
   clearSession,
   clearTenantId,
+  loadLastTenantId,
   loadRememberedEmail,
   loadTenantId,
   loadToken,
@@ -340,7 +341,19 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     [memberships, tenantId]
   )
 
+  /** Aktif seçim yokken (ör. /kooperatifler) son seçilen kooperatifin adı/rolü gösterilir. */
+  const displayMembership = useMemo(() => {
+    if (activeMembership) return activeMembership
+    const lastId = loadLastTenantId()
+    if (lastId) {
+      const last = memberships.find((m) => m.tenantId === lastId)
+      if (last) return last
+    }
+    return memberships[0] ?? null
+  }, [activeMembership, memberships])
+
   const activeRole = activeMembership?.role ?? null
+  const displayRole = displayMembership?.role ?? null
   const isAdmin = activeRole === 'ADMIN'
   const canWrite = activeRole === 'ADMIN' || activeRole === 'STAFF'
 
@@ -350,11 +363,11 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
         ? {
             ...user,
             full_name: user.fullName,
-            role: activeRole ?? 'VIEWER',
+            role: displayRole ?? activeRole ?? 'VIEWER',
             has_security_question: hasSecurityQuestion
           }
         : null,
-    [user, activeRole, hasSecurityQuestion]
+    [user, displayRole, activeRole, hasSecurityQuestion]
   )
 
   const value = useMemo<AuthContextValue>(

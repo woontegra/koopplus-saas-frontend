@@ -52,20 +52,37 @@ export default function PlatformTenantsPage(): JSX.Element {
     setSearchParams({}, { replace: true })
   }, [searchParams, setSearchParams])
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (opts?: { quiet?: boolean }) => {
+    if (!opts?.quiet) setLoading(true)
     setError('')
     try {
       setTenants(await platformApi.listTenants())
     } catch (err) {
       setError(platformErrorMessage(err))
     } finally {
-      setLoading(false)
+      if (!opts?.quiet) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
     void load()
+  }, [load])
+
+  // Yeni kooperatif oluşunca listede görünsün: 30 sn + sekmeye dönüşte yenile.
+  useEffect(() => {
+    const quiet = (): void => {
+      if (document.visibilityState === 'hidden') return
+      void load({ quiet: true })
+    }
+    const timer = window.setInterval(quiet, 30_000)
+    const onVis = (): void => {
+      if (document.visibilityState === 'visible') void load({ quiet: true })
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVis)
+    }
   }, [load])
 
   const filtered = useMemo(() => {

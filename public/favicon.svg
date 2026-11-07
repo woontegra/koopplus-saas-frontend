@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="KoopPlus">
+  <rect width="64" height="64" rx="14" fill="#13294F"/>
+  <path fill="#5B9BD5" d="M18 38c0-8.3 6.7-15 15-15h1c6.6 0 12 5.4 12 12v3H34v-3c0-2.2-1.8-4-4-4h-1c-3.9 0-7 3.1-7 7v1h-4v-1z"/>
+  <circle cx="33" cy="28" r="5" fill="#F8FAFC"/>
+  <path fill="#38BDF8" d="M22 42h22v4H22z"/>
+</svg>

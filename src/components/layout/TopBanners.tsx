@@ -3,6 +3,7 @@ import { fetchPlatformContact } from '../../api/contact'
 import type { PlatformContact } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
 import { clearSession, loadSupportSession } from '../../auth/session'
+import { useAskDialog } from '../../hooks/useAskDialog'
 import { fetchTenantAnnouncements, type TenantAnnouncement } from '../../platform/platformApi'
 import { formatDate } from '../../utils/format'
 import { daysRemaining, USAGE_WARNING_DAYS } from '../../utils/usage'
@@ -64,17 +65,67 @@ function remainingLabel(days: number): string {
 /**
  * Demo kooperatif: ince bilgi şeridi (kapatılamaz).
  * İlk günlerde mavi; son 2 günde turuncu. Son gün: “bugün son gün”.
+ * ADMIN: örnek veri varsa “Örnek verileri sil” (Ayarlar’daki clear-sample-data).
  */
 export function DemoUsageBanner(): JSX.Element | null {
-  const { activeMembership } = useAuth()
+  const { activeMembership, isAdmin } = useAuth()
   const contact = usePlatformContact()
+  const ask = useAskDialog()
   const tenant = activeMembership?.tenant
+  const [sampleTotal, setSampleTotal] = useState<number | null>(null)
+  const [clearing, setClearing] = useState(false)
+
+  useEffect(() => {
+    if (!tenant?.isDemo || !isAdmin) {
+      setSampleTotal(null)
+      return
+    }
+    let alive = true
+    window.api.settings
+      .getSampleData()
+      .then((res) => {
+        if (!alive) return
+        if (res.success && res.data) setSampleTotal(Number(res.data.total) || 0)
+        else setSampleTotal(0)
+      })
+      .catch(() => {
+        if (alive) setSampleTotal(null)
+      })
+    return () => {
+      alive = false
+    }
+  }, [tenant?.isDemo, tenant?.id, isAdmin])
+
   if (!tenant?.isDemo) return null
 
   const days = daysRemaining(tenant.demoExpiresAt ?? null)
   if (days === null || days <= 0) return null
 
   const urgent = days <= 2
+  const showClear = isAdmin && sampleTotal != null && sampleTotal > 0
+
+  const onClearSample = async (): Promise<void> => {
+    if (
+      !(await ask.confirm(
+        'Yalnızca örnek olarak işaretlenen kayıtlar silinir. Sizin girdiğiniz veriler kalır. Devam edilsin mi?',
+        { title: 'Örnek verileri sil', confirmLabel: 'Sil', variant: 'danger' }
+      ))
+    ) {
+      return
+    }
+    setClearing(true)
+    try {
+      const res = await window.api.settings.clearSampleData()
+      if (res.success) {
+        setSampleTotal(0)
+      } else {
+        await ask.alert(res.error || 'Örnek veriler silinemedi.', 'Hata')
+      }
+    } finally {
+      setClearing(false)
+    }
+  }
+
   return (
     <div
       className={`top-banner top-banner--strip ${urgent ? 'top-banner--strip-warn' : 'top-banner--strip-info'}`}
@@ -84,7 +135,19 @@ export function DemoUsageBanner(): JSX.Element | null {
         Demo sürümünü kullanıyorsunuz · {remainingLabel(days)} · Tam sürüme geçmek için bizimle iletişime
         geçin
       </span>
-      <ContactLinks contact={contact} className="top-banner__contacts" />
+      <span className="top-banner__strip-actions">
+        {showClear ? (
+          <button
+            type="button"
+            className="top-banner__btn"
+            disabled={clearing}
+            onClick={() => void onClearSample()}
+          >
+            {clearing ? 'Siliniyor…' : 'Örnek verileri sil'}
+          </button>
+        ) : null}
+        <ContactLinks contact={contact} className="top-banner__contacts" />
+      </span>
     </div>
   )
 }

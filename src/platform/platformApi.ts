@@ -666,6 +666,7 @@ export async function platformDownloadBackup(
   try {
     response = await fetch(apiUrl(`/api/platform/tenants/${encodeURIComponent(tenantId)}/backup`), {
       method: 'POST',
+      credentials: 'include',
       headers: {
         Accept: '*/*',
         'Content-Type': 'application/json',

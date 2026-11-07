@@ -229,6 +229,14 @@
   border-bottom: 1px solid #fed7aa;
 }
 
+.top-banner__strip-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
 .top-banner__strip-text {
   text-align: center;
 }

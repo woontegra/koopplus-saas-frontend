@@ -50,6 +50,7 @@ export async function desktopFetchBlob(
   try {
     response = await fetch(apiUrl(path), {
       method: options.method ?? (options.body !== undefined ? 'POST' : 'GET'),
+      credentials: 'include',
       headers,
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined
     })

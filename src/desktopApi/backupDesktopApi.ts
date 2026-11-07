@@ -163,7 +163,7 @@ async function fetchBackupWithMeta(options: {
 
   const password = options.password?.trim() ? options.password : undefined
   const tryFetch = async (path: string, init: RequestInit): Promise<Response> =>
-    fetch(apiUrl(path), init)
+    fetch(apiUrl(path), { ...init, credentials: 'include' })
 
   let response: Response
   try {

@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Settings } from '@shared/types'
 import type { AuthContextUser } from '../../auth/AuthContext'
+import { useAuth } from '../../auth/AuthContext'
 import { useCooperatives } from '../../context/CooperativeContext'
+import { loadLastTenantId } from '../../auth/session'
 import { formatMonthYear } from '../../utils/format'
 import { IconBuilding } from '../ui/icons'
 import NavMenuButton from './NavMenuButton'
@@ -26,7 +28,14 @@ export default function AppHeader({ settings, pageTitle }: AppHeaderProps): JSX.
   const weekday = now.toLocaleDateString('tr-TR', { weekday: 'long' })
   const infoLine = `${day} ${monthName} ${year}, ${weekday} · Aktif dönem: ${periodLabel}`
 
-  const coopName = settings?.cooperative_name?.trim()
+  const { memberships, activeMembership } = useAuth()
+  const lastMembership =
+    activeMembership ??
+    memberships.find((m) => m.tenantId === loadLastTenantId()) ??
+    memberships[0] ??
+    null
+  const coopName =
+    settings?.cooperative_name?.trim() || lastMembership?.tenant.name?.trim() || ''
 
   return (
     <header className="app-header">
