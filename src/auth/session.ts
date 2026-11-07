@@ -20,6 +20,15 @@ function scrubLegacyTokens(): void {
 
 scrubLegacyTokens()
 
+/** E2E: Playwright init sonrası belleğe jeton yazmak için. */
+if (typeof window !== 'undefined') {
+  ;(window as Window & { __koopE2ESetToken?: (token: string) => void }).__koopE2ESetToken = (
+    token: string
+  ) => {
+    memoryAccessToken = token
+  }
+}
+
 export function loadToken(): string | null {
   return memoryAccessToken
 }

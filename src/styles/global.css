@@ -165,10 +165,16 @@ a {
 
 .sidebar {
   width: var(--kat-sidebar-width);
-  background: linear-gradient(180deg, #143056 0%, var(--kat-bg-sidebar) 48%, #0b1d33 100%);
+  background: linear-gradient(
+    180deg,
+    var(--kat-bg-sidebar-top) 0%,
+    var(--kat-bg-sidebar) 48%,
+    var(--kat-bg-sidebar-bottom) 100%
+  );
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  color: var(--kat-text-sidebar);
 }
 
 .sidebar__brand {
@@ -176,7 +182,7 @@ a {
   align-items: center;
   justify-content: center;
   padding: 18px 16px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--kat-border-sidebar);
 }
 
 .sidebar__brand-logo {
@@ -186,6 +192,10 @@ a {
   height: auto;
   object-fit: contain;
   background: transparent;
+}
+
+.brand-logo--on-dark {
+  filter: drop-shadow(0 0 10px rgba(147, 197, 253, 0.28)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
 }
 
 .sidebar__module-title {
@@ -226,7 +236,7 @@ a {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.38);
+  color: var(--kat-text-sidebar-muted);
 }
 
 .sidebar__item {
@@ -236,7 +246,7 @@ a {
   padding: 8px 10px;
   margin: 2px 0;
   border-radius: 10px;
-  color: rgba(255, 255, 255, 0.78);
+  color: var(--kat-text-sidebar);
 }
 
 .sidebar__item svg {

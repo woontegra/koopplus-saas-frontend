@@ -77,7 +77,7 @@ function PlatformShell(): JSX.Element {
       <NavBackdrop />
       <aside id="app-sidebar" className={`pf-sidebar${navOpen ? ' is-open' : ''}`}>
         <div className="pf-sidebar__brand">
-          <BrandLogo className="pf-sidebar__logo" />
+          <BrandLogo className="pf-sidebar__logo" variant="onDark" />
           <span className="pf-sidebar__title">
             <IconChart size={13} /> Platform
           </span>

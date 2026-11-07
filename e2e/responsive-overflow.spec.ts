@@ -117,6 +117,38 @@ async function installApiMocks(page: Page): Promise<void> {
       })
       return
     }
+    if (url.includes('/api/cooperatives')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            current_id: 't1',
+            cooperatives: [
+              {
+                id: 't1',
+                name: 'Demo Kooperatif E2E',
+                status: 'ACTIVE',
+                relative_path: 't1',
+                created_at: '2026-01-01T00:00:00.000Z',
+                last_opened_at: null,
+                origin: 'created'
+              }
+            ]
+          }
+        })
+      })
+      return
+    }
+    if (url.includes('/api/settings')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, data: {} })
+      })
+      return
+    }
     if (url.includes('/api/auth/announcements') || url.includes('/api/platform/')) {
       await route.fulfill({
         status: 200,
@@ -129,19 +161,62 @@ async function installApiMocks(page: Page): Promise<void> {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ success: true, data: [] })
+        body: JSON.stringify({ success: true, data: {} })
       })
       return
     }
     await route.continue()
   })
 
-  await page.addInitScript(() => {
-    localStorage.setItem('koopplus.saas.accessToken', 'e2e-token')
-    localStorage.setItem('koopplus.saas.refreshToken', 'e2e-refresh')
+  await page.addInitScript((me) => {
     localStorage.setItem('koopplus.saas.tenantId', 't1')
     localStorage.setItem('koopplus.saas.lastActivityAt', String(Date.now()))
-  })
+    const originalFetch = window.fetch.bind(window)
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
+      if (url.includes('/api/auth/refresh')) {
+        return new Response(JSON.stringify({ success: true, data: { token: 'e2e-token' } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+      if (url.includes('/api/auth/me')) {
+        return new Response(JSON.stringify(me), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+      if (url.includes('/api/cooperatives')) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: {
+              current_id: 't1',
+              cooperatives: [
+                {
+                  id: 't1',
+                  name: 'Demo Kooperatif E2E',
+                  status: 'ACTIVE',
+                  relative_path: 't1',
+                  created_at: '2026-01-01T00:00:00.000Z',
+                  last_opened_at: null,
+                  origin: 'created'
+                }
+              ]
+            }
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+      if (url.includes('/api/')) {
+        return new Response(JSON.stringify({ success: true, data: {} }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+      return originalFetch(input, init)
+    }
+  }, mePayload)
 }
 
 async function assertNoHorizontalOverflow(page: Page, path: string, vp: string): Promise<void> {
@@ -182,5 +257,56 @@ for (const vp of VIEWPORTS) {
         await assertNoHorizontalOverflow(page, path, vp.name)
       })
     }
+  })
+}
+
+const DRAWER_VIEWPORTS = [
+  { name: 'phone', width: 375, height: 812 },
+  { name: 'tablet', width: 768, height: 1024 }
+] as const
+
+async function assertSidebarOffCanvas(page: Page): Promise<void> {
+  const sidebar = page.locator('#app-sidebar')
+  await expect(sidebar).not.toHaveClass(/is-open/)
+  const visible = await sidebar.evaluate((el) => {
+    const s = window.getComputedStyle(el)
+    return s.visibility !== 'hidden' && s.transform.includes('matrix(1, 0, 0, 1, 0, 0)')
+  })
+  expect(visible, 'kapalı menü görünür/transform sıfır olmamalı').toBeFalsy()
+}
+
+for (const vp of DRAWER_VIEWPORTS) {
+  test.describe(`mobil menü çekmece ${vp.name} (${vp.width}px)`, () => {
+    test.use({ viewport: { width: vp.width, height: vp.height } })
+
+    test('sol menü varsayılan gizli; ☰ ile açılıp kapanır', async ({ page }) => {
+      await installApiMocks(page)
+      await page.goto('/', { waitUntil: 'networkidle' })
+      await expect(page.locator('.app-shell, .pf-shell')).toBeVisible({ timeout: 30_000 })
+      const sidebar = page.locator('#app-sidebar')
+      await expect(sidebar).toBeAttached({ timeout: 15_000 })
+      const menuBtn = page.locator('.nav-menu-btn')
+      await expect(menuBtn).toBeVisible()
+      await expect(sidebar).not.toHaveClass(/is-open/)
+      await assertSidebarOffCanvas(page)
+
+      await menuBtn.click()
+      await expect(sidebar).toHaveClass(/is-open/)
+      await expect(sidebar).toBeVisible()
+      await expect
+        .poll(async () =>
+          sidebar.evaluate((el) => {
+            const t = window.getComputedStyle(el).transform
+            // translate3d(0,0,0) → matrix(1, 0, 0, 1, 0, 0) veya none
+            return t === 'none' || t.startsWith('matrix(1, 0, 0, 1, 0, 0)')
+          })
+        )
+        .toBeTruthy()
+
+      // Backdrop ile kapat (hamburger üst katmanda kalmayabilir)
+      await page.locator('.nav-backdrop').click({ position: { x: 320, y: 200 }, force: true })
+      await expect(sidebar).not.toHaveClass(/is-open/)
+      await assertSidebarOffCanvas(page)
+    })
   })
 }

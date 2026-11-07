@@ -136,7 +136,7 @@ export default function LoginPage(): JSX.Element {
             <span className="login-stage__ring login-stage__ring--outer" aria-hidden />
             <span className="login-stage__ring login-stage__ring--mid" aria-hidden />
             <span className="login-stage__ring login-stage__ring--inner" aria-hidden />
-            <BrandLogo className="login-stage__wordmark" />
+            <BrandLogo className="login-stage__wordmark" variant="onDark" />
           </div>
 
           <div className="login-stage__copy login-stage__reveal login-stage__reveal--2">

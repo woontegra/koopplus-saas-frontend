@@ -198,13 +198,17 @@ body,
     bottom: 0;
     z-index: 4600;
     width: min(280px, 86vw);
-    transform: translateX(-105%);
+    transform: translate3d(-105%, 0, 0);
     transition: transform 0.22s ease;
     box-shadow: 8px 0 28px rgba(15, 23, 42, 0.28);
+    pointer-events: none;
+    visibility: hidden;
   }
 
   .sidebar.is-open {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
+    pointer-events: auto;
+    visibility: visible;
   }
 
   .pf-shell {
@@ -219,13 +223,24 @@ body,
     bottom: 0;
     z-index: 4600;
     width: min(280px, 86vw);
-    transform: translateX(-105%);
+    transform: translate3d(-105%, 0, 0);
     transition: transform 0.22s ease;
     box-shadow: 8px 0 28px rgba(15, 23, 42, 0.28);
+    pointer-events: none;
+    visibility: hidden;
   }
 
   .pf-sidebar.is-open {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
+    pointer-events: auto;
+    visibility: visible;
+  }
+
+  /* Hamburger backdrop üstünde kalsın (aç/kapa) */
+  .app-header,
+  .pf-main__topbar {
+    position: sticky;
+    z-index: 4550;
   }
 
   .pf-main__topbar {

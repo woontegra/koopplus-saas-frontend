@@ -576,8 +576,13 @@
   flex-direction: column;
   height: 100vh;
   padding: 18px 14px;
-  background: var(--kat-bg-sidebar);
-  color: var(--kat-text-inverse);
+  background: linear-gradient(
+    180deg,
+    var(--kat-bg-sidebar-top) 0%,
+    var(--kat-bg-sidebar) 48%,
+    var(--kat-bg-sidebar-bottom) 100%
+  );
+  color: var(--kat-text-sidebar);
   box-sizing: border-box;
 }
 
@@ -586,7 +591,7 @@
   flex-direction: column;
   gap: 8px;
   padding: 4px 8px 18px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--kat-border-sidebar);
 }
 
 .pf-sidebar__logo {
@@ -603,7 +608,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--kat-text-inverse-muted);
+  color: var(--kat-text-sidebar-muted);
 }
 
 .pf-sidebar__nav {
@@ -621,7 +626,7 @@
   gap: 10px;
   padding: 9px 12px;
   border-radius: var(--kat-radius);
-  color: var(--kat-text-inverse-muted);
+  color: var(--kat-text-sidebar);
   font-size: var(--kat-font-size-md);
   font-weight: 600;
   text-decoration: none;
@@ -634,7 +639,7 @@
 }
 
 .pf-nav-link.is-active {
-  background: var(--kat-bg-sidebar-active, #1e3a6e);
+  background: var(--kat-bg-sidebar-active);
   color: #fff;
   font-weight: 700;
   box-shadow: none;

@@ -36,7 +36,7 @@ export default function Sidebar(): JSX.Element {
   return (
     <aside id="app-sidebar" className={`sidebar${navOpen ? ' is-open' : ''}`}>
       <div className="sidebar__brand">
-        <BrandLogo className="sidebar__brand-logo" />
+        <BrandLogo className="sidebar__brand-logo" variant="onDark" />
       </div>
 
       <nav className="sidebar__nav">

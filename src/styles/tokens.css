@@ -7,9 +7,15 @@
   --kat-bg-panel-alt: #f8fafc;
   --kat-bg-header: #ffffff;
   --kat-bg-header-accent: #ffffff;
-  --kat-bg-sidebar: #0b1b36;
-  --kat-bg-sidebar-group: rgba(255, 255, 255, 0.04);
-  --kat-bg-sidebar-active: #1e3a6e;
+  /* Sol menü — bir ton açık / canlı lacivert (#13294F) */
+  --kat-bg-sidebar: #13294f;
+  --kat-bg-sidebar-top: #1a3563;
+  --kat-bg-sidebar-bottom: #0f2345;
+  --kat-bg-sidebar-group: rgba(255, 255, 255, 0.06);
+  --kat-bg-sidebar-active: #2a4f88;
+  --kat-border-sidebar: rgba(255, 255, 255, 0.14);
+  --kat-text-sidebar: #f1f5fb;
+  --kat-text-sidebar-muted: #c5d4e8;
   --kat-bg-ribbon: #ffffff;
   --kat-bg-ribbon-btn: #f8fafc;
   --kat-bg-ribbon-btn-hover: #eff6ff;
