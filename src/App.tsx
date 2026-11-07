@@ -3,6 +3,7 @@ import { AuthProvider } from './auth/AuthContext'
 import AdminRoute from './auth/AdminRoute'
 import RequireAuth from './auth/RequireAuth'
 import RequireTenant from './auth/RequireTenant'
+import SessionLifecycle from './components/auth/SessionLifecycle'
 import AppLayout, { type AppLayoutContext } from './components/layout/AppLayout'
 import { CooperativeProvider } from './context/CooperativeContext'
 import { DialogProvider } from './context/DialogContext'
@@ -98,6 +99,7 @@ export default function App(): JSX.Element {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <SessionLifecycle />
         <DialogProvider>
           <ToastProvider>
             <ProgressProvider>

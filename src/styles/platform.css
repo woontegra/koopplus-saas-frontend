@@ -353,6 +353,47 @@
   color: #94a3b8;
 }
 
+/* ---- Idle oturum uyarısı ---- */
+.idle-warn {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.idle-warn__card {
+  width: min(400px, 100%);
+  background: #fff;
+  border-radius: 12px;
+  padding: 22px 20px 18px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.18);
+  text-align: center;
+}
+
+.idle-warn__title {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+  color: #9a3412;
+}
+
+.idle-warn__text {
+  margin: 0 0 16px;
+  color: #475569;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.idle-warn__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
 .top-banner--support {
   background: #7c2d12;
   color: #ffedd5;

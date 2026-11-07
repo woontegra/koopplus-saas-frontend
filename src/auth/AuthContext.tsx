@@ -8,18 +8,21 @@ import {
   type ReactNode
 } from 'react'
 import { loginRequest, logoutRequest, meRequest } from '../api/auth'
-import { ApiError } from '../api/client'
+import { ApiError, silentRefreshAccessToken } from '../api/client'
 import type { AccessBlock, AuthMembership, AuthUser, MembershipRole } from '../api/types'
 import {
   clearSession,
   clearTenantId,
   loadRememberedEmail,
+  loadRefreshToken,
   loadTenantId,
   loadToken,
   saveRememberedEmail,
   clearRememberedEmail,
+  saveRefreshToken,
   saveTenantId,
-  saveToken
+  saveToken,
+  clearRefreshToken
 } from './session'
 
 /** Masaüstü Sidebar/AppLayout uyumu: full_name + role (aktif kooperatif rolü). */
@@ -99,10 +102,14 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       nextToken: string,
       nextUser: AuthUser,
       nextMemberships: AuthMembership[],
-      nextAccessBlock?: AccessBlock | null
+      nextAccessBlock?: AccessBlock | null,
+      nextRefresh?: string | null
     ) => {
       const nextTenant = resolveTenantId(nextMemberships, loadTenantId())
       saveToken(nextToken)
+      if (nextRefresh) {
+        saveRefreshToken(nextRefresh)
+      }
       if (nextTenant) {
         saveTenantId(nextTenant)
       } else {
@@ -140,8 +147,8 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   }, [])
 
   const bootstrapSession = useCallback(async (): Promise<void> => {
-    const existing = loadToken()
-    if (!existing) {
+    let existing = loadToken()
+    if (!existing && !loadRefreshToken()) {
       setReady(true)
       setBootError(null)
       return
@@ -150,9 +157,30 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     setReady(false)
     setBootError(null)
     try {
-      const me = await meRequest(existing)
-      applySession(existing, me.user, me.memberships, me.accessBlock)
-      await loadSecurityStatus()
+      if (!existing && loadRefreshToken()) {
+        existing = (await silentRefreshAccessToken()) ?? null
+      }
+      if (!existing) {
+        resetSession()
+        setReady(true)
+        return
+      }
+      try {
+        const me = await meRequest(existing)
+        applySession(existing, me.user, me.memberships, me.accessBlock)
+        await loadSecurityStatus()
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401 && loadRefreshToken()) {
+          const next = await silentRefreshAccessToken()
+          if (next) {
+            const me = await meRequest(next)
+            applySession(next, me.user, me.memberships, me.accessBlock)
+            await loadSecurityStatus()
+            return
+          }
+        }
+        throw error
+      }
     } catch (error) {
       if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
         resetSession()
@@ -174,6 +202,22 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     void bootstrapSession()
   }, [bootstrapSession])
 
+  // Başka sekmeden gelen access token güncellemesi
+  useEffect(() => {
+    const onStorage = (ev: StorageEvent): void => {
+      if (ev.key === 'koopplus.saas.accessToken' && ev.newValue) {
+        setToken(ev.newValue)
+      }
+      if (ev.key === 'koopplus.saas.accessToken' && ev.newValue === null) {
+        setToken(null)
+        setUser(null)
+        setMemberships([])
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
+
   const refreshSession = useCallback(async (): Promise<void> => {
     const existing = token ?? loadToken()
     if (!existing) return
@@ -191,7 +235,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   const login = useCallback(
     async (email: string, password: string, remember: boolean) => {
       const data = await loginRequest(email.trim(), password)
-      applySession(data.token, data.user, data.memberships, data.accessBlock)
+      applySession(data.token, data.user, data.memberships, data.accessBlock, data.refreshToken)
       await loadSecurityStatus()
       if (remember) {
         saveRememberedEmail(email.trim().toLowerCase())
@@ -213,6 +257,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     } catch {
       // Çıkışta sunucu hatası olsa da yerel oturum kapanır
     } finally {
+      clearRefreshToken()
       resetSession()
     }
   }, [resetSession, token])

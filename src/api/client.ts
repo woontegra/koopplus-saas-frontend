@@ -1,5 +1,12 @@
 import { apiUrl } from './config'
 import type { ApiEnvelope } from './types'
+import {
+  loadRefreshToken,
+  loadToken,
+  saveRefreshToken,
+  saveToken
+} from '../auth/session'
+import { SESSION_CHANNEL, type SessionBroadcast } from '../auth/idleSession'
 
 export class ApiError extends Error {
   readonly status: number
@@ -16,15 +23,79 @@ type RequestOptions = {
   body?: unknown
   token?: string | null
   tenantId?: string | null
+  /** 401'de sessiz yenileme denemesini atla (refresh/login uçları). */
+  skipAuthRefresh?: boolean
+}
+
+type ActivityListener = () => void
+
+const activityListeners = new Set<ActivityListener>()
+
+export function onApiActivity(listener: ActivityListener): () => void {
+  activityListeners.add(listener)
+  return () => activityListeners.delete(listener)
+}
+
+function notifyApiActivity(): void {
+  for (const listener of activityListeners) {
+    try {
+      listener()
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 function mapHttpError(status: number, fallback: string): string {
-  // Backend'in `error` alanı yoksa yedek; varsa her zaman payload.error kullanılır.
   if (status === 401) return 'Oturum geçersiz veya süresi dolmuş. Lütfen tekrar giriş yapın.'
   if (status === 403) return 'Bu işlem için yetkiniz yok.'
   if (status === 404) return 'İstenen kaynak bulunamadı.'
   if (status >= 500) return fallback || 'Sunucu hatası oluştu. Lütfen daha sonra tekrar deneyin.'
   return fallback
+}
+
+let refreshInFlight: Promise<string | null> | null = null
+
+function broadcastTokens(access: string, refresh: string | null): void {
+  try {
+    const ch = new BroadcastChannel(SESSION_CHANNEL)
+    const msg: SessionBroadcast = { type: 'tokens', access, refresh }
+    ch.postMessage(msg)
+    ch.close()
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Tek seferlik sessiz access yenileme (paralel istekler paylaşır). */
+export async function silentRefreshAccessToken(): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight
+  refreshInFlight = (async () => {
+    const refreshToken = loadRefreshToken()
+    if (!refreshToken) return null
+    try {
+      const headers: Record<string, string> = {
+        Accept: 'application/json',
+        'Content-Type': 'application/json'
+      }
+      const response = await fetch(apiUrl('/api/auth/refresh'), {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ refreshToken })
+      })
+      const payload = (await response.json()) as ApiEnvelope<{ token: string; refreshToken: string }>
+      if (!response.ok || !payload || payload.success !== true) return null
+      saveToken(payload.data.token)
+      saveRefreshToken(payload.data.refreshToken)
+      broadcastTokens(payload.data.token, payload.data.refreshToken)
+      return payload.data.token
+    } catch {
+      return null
+    } finally {
+      refreshInFlight = null
+    }
+  })()
+  return refreshInFlight
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -35,8 +106,9 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   if (options.body !== undefined) {
     headers['Content-Type'] = 'application/json'
   }
-  if (options.token) {
-    headers.Authorization = `Bearer ${options.token}`
+  const token = options.token !== undefined ? options.token : loadToken()
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
   }
   if (options.tenantId) {
     headers['X-Tenant-Id'] = options.tenantId
@@ -54,6 +126,13 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       'Sunucuya bağlanılamadı. İnternet bağlantınızı veya API adresini kontrol edin.',
       0
     )
+  }
+
+  if (response.status === 401 && !options.skipAuthRefresh && !path.includes('/api/auth/refresh')) {
+    const next = await silentRefreshAccessToken()
+    if (next) {
+      return apiRequest<T>(path, { ...options, token: next, skipAuthRefresh: true })
+    }
   }
 
   let payload: ApiEnvelope<T> | null = null
@@ -78,5 +157,6 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     )
   }
 
+  notifyApiActivity()
   return payload.data
 }

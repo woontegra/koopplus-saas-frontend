@@ -1,6 +1,6 @@
 import { apiRequest } from './client'
-import { loadToken } from '../auth/session'
-import type { LoginResponse, MeResponse } from './types'
+import { loadRefreshToken, loadToken } from '../auth/session'
+import type { LoginResponse, MeResponse, RefreshResponse } from './types'
 
 export function loginRequest(email: string, password: string): Promise<LoginResponse> {
   return apiRequest<LoginResponse>('/api/auth/login', {
@@ -16,10 +16,19 @@ export function meRequest(token: string): Promise<MeResponse> {
   })
 }
 
+export function refreshRequest(refreshToken: string): Promise<RefreshResponse> {
+  return apiRequest<RefreshResponse>('/api/auth/refresh', {
+    method: 'POST',
+    body: { refreshToken },
+    skipAuthRefresh: true
+  })
+}
+
 export function logoutRequest(token: string): Promise<{ loggedOut: boolean }> {
   return apiRequest<{ loggedOut: boolean }>('/api/auth/logout', {
     method: 'POST',
-    token
+    token,
+    body: { refreshToken: loadRefreshToken() }
   })
 }
 

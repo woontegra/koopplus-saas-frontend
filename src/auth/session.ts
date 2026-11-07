@@ -1,7 +1,9 @@
 const TOKEN_KEY = 'koopplus.saas.accessToken'
+const REFRESH_KEY = 'koopplus.saas.refreshToken'
 const TENANT_KEY = 'koopplus.saas.tenantId'
 const REMEMBER_EMAIL_KEY = 'koopplus.saas.rememberEmail'
 const SUPPORT_KEY = 'koopplus.saas.support'
+const LAST_ACTIVITY_KEY = 'koopplus.saas.lastActivityAt'
 
 export function loadToken(): string | null {
   try {
@@ -17,6 +19,48 @@ export function saveToken(token: string): void {
 
 export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY)
+}
+
+export function loadRefreshToken(): string | null {
+  try {
+    return localStorage.getItem(REFRESH_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function saveRefreshToken(token: string): void {
+  localStorage.setItem(REFRESH_KEY, token)
+}
+
+export function clearRefreshToken(): void {
+  localStorage.removeItem(REFRESH_KEY)
+}
+
+export function loadLastActivityAt(): number {
+  try {
+    const raw = localStorage.getItem(LAST_ACTIVITY_KEY)
+    const n = raw ? Number(raw) : NaN
+    return Number.isFinite(n) ? n : Date.now()
+  } catch {
+    return Date.now()
+  }
+}
+
+export function saveLastActivityAt(at: number): void {
+  try {
+    localStorage.setItem(LAST_ACTIVITY_KEY, String(at))
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearLastActivityAt(): void {
+  try {
+    localStorage.removeItem(LAST_ACTIVITY_KEY)
+  } catch {
+    /* ignore */
+  }
 }
 
 export function loadTenantId(): string | null {
@@ -84,6 +128,8 @@ export function clearSupportSession(): void {
 
 export function clearSession(): void {
   clearToken()
+  clearRefreshToken()
   clearTenantId()
   clearSupportSession()
+  clearLastActivityAt()
 }
