@@ -41,15 +41,32 @@ export type ApiFailure = {
 
 export type ApiEnvelope<T> = ApiSuccess<T> | ApiFailure
 
+export type PlatformContact = {
+  phone: string
+  email: string
+  whatsapp: string | null
+}
+
+export type AccessBlock = {
+  reason: string
+  title: string
+  message: string
+  tenantName: string
+  suspensionReason?: string | null
+  contact: PlatformContact
+}
+
 export type LoginResponse = {
   token: string
   user: AuthUser
   memberships: AuthMembership[]
+  accessBlock?: AccessBlock | null
 }
 
 export type MeResponse = {
   user: AuthUser
   memberships: AuthMembership[]
+  accessBlock?: AccessBlock | null
 }
 
 /** GET /api/partners liste satırı (slim). */

@@ -9,7 +9,7 @@ import {
 } from 'react'
 import { loginRequest, logoutRequest, meRequest } from '../api/auth'
 import { ApiError } from '../api/client'
-import type { AuthMembership, AuthUser, MembershipRole } from '../api/types'
+import type { AccessBlock, AuthMembership, AuthUser, MembershipRole } from '../api/types'
 import {
   clearSession,
   clearTenantId,
@@ -52,6 +52,8 @@ type AuthContextValue = {
   tenantId: string | null
   activeMembership: AuthMembership | null
   activeRole: MembershipRole | null
+  /** Süresi dolmuş / askıya alınmış kooperatif — giriş sonrası engel ekranı. */
+  accessBlock: AccessBlock | null
   rememberedEmail: string | null
   canWrite: boolean
   isAdmin: boolean
@@ -88,23 +90,33 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   const [user, setUser] = useState<AuthUser | null>(null)
   const [memberships, setMemberships] = useState<AuthMembership[]>([])
   const [tenantId, setTenantId] = useState<string | null>(null)
+  const [accessBlock, setAccessBlock] = useState<AccessBlock | null>(null)
   const [hasSecurityQuestion, setHasSecurityQuestion] = useState(true)
   const [rememberedEmail, setRememberedEmail] = useState<string | null>(loadRememberedEmail())
 
-  const applySession = useCallback((nextToken: string, nextUser: AuthUser, nextMemberships: AuthMembership[]) => {
-    const nextTenant = resolveTenantId(nextMemberships, loadTenantId())
-    saveToken(nextToken)
-    if (nextTenant) {
-      saveTenantId(nextTenant)
-    } else {
-      clearTenantId()
-    }
-    setToken(nextToken)
-    setUser(nextUser)
-    setMemberships(nextMemberships)
-    setTenantId(nextTenant)
-    setBootError(null)
-  }, [])
+  const applySession = useCallback(
+    (
+      nextToken: string,
+      nextUser: AuthUser,
+      nextMemberships: AuthMembership[],
+      nextAccessBlock?: AccessBlock | null
+    ) => {
+      const nextTenant = resolveTenantId(nextMemberships, loadTenantId())
+      saveToken(nextToken)
+      if (nextTenant) {
+        saveTenantId(nextTenant)
+      } else {
+        clearTenantId()
+      }
+      setToken(nextToken)
+      setUser(nextUser)
+      setMemberships(nextMemberships)
+      setTenantId(nextTenant)
+      setAccessBlock(nextAccessBlock ?? null)
+      setBootError(null)
+    },
+    []
+  )
 
   const resetSession = useCallback(() => {
     clearSession()
@@ -112,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     setUser(null)
     setMemberships([])
     setTenantId(null)
+    setAccessBlock(null)
     setHasSecurityQuestion(true)
   }, [])
 
@@ -138,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     setBootError(null)
     try {
       const me = await meRequest(existing)
-      applySession(existing, me.user, me.memberships)
+      applySession(existing, me.user, me.memberships, me.accessBlock)
       await loadSecurityStatus()
     } catch (error) {
       if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
@@ -166,7 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     if (!existing) return
     try {
       const me = await meRequest(existing)
-      applySession(existing, me.user, me.memberships)
+      applySession(existing, me.user, me.memberships, me.accessBlock)
       await loadSecurityStatus()
     } catch (error) {
       if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
@@ -178,7 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   const login = useCallback(
     async (email: string, password: string, remember: boolean) => {
       const data = await loginRequest(email.trim(), password)
-      applySession(data.token, data.user, data.memberships)
+      applySession(data.token, data.user, data.memberships, data.accessBlock)
       await loadSecurityStatus()
       if (remember) {
         saveRememberedEmail(email.trim().toLowerCase())
@@ -253,6 +266,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       tenantId,
       activeMembership,
       activeRole,
+      accessBlock,
       rememberedEmail,
       canWrite,
       isAdmin,
@@ -274,6 +288,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       tenantId,
       activeMembership,
       activeRole,
+      accessBlock,
       canWrite,
       isAdmin,
       rememberedEmail,

@@ -36,7 +36,7 @@ function loginErrorMessage(error: unknown): string {
 }
 
 export default function LoginPage(): JSX.Element {
-  const { ready, token, user, tenantId, memberships, rememberedEmail, login } = useAuth()
+  const { ready, token, user, tenantId, memberships, accessBlock, rememberedEmail, login } = useAuth()
   const location = useLocation()
   const from = (location.state as { from?: string } | null)?.from
 
@@ -56,6 +56,12 @@ export default function LoginPage(): JSX.Element {
   }, [rememberedEmail])
 
   if (ready && token && user) {
+    if (accessBlock && !user.isPlatformAdmin) {
+      return <Navigate to="/" replace />
+    }
+    if (user.isPlatformAdmin && memberships.length === 0) {
+      return <Navigate to="/platform" replace />
+    }
     if (!tenantId && memberships.length > 1) {
       return <Navigate to="/kooperatifler" replace />
     }

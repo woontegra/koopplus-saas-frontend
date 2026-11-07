@@ -1,9 +1,12 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react'
+import { fetchPlatformContact } from '../../api/contact'
+import type { PlatformContact } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
 import { clearSession, loadSupportSession } from '../../auth/session'
 import { fetchTenantAnnouncements, type TenantAnnouncement } from '../../platform/platformApi'
 import { formatDate } from '../../utils/format'
 import { daysRemaining, USAGE_WARNING_DAYS } from '../../utils/usage'
+import { ContactLinks } from '../contact/ContactLinks'
 
 /** Platform "Destek modu" (impersonate) üst banner'ı — platforma dön butonu ile. */
 export function SupportBanner(): JSX.Element | null {
@@ -11,7 +14,6 @@ export function SupportBanner(): JSX.Element | null {
   if (!support) return null
 
   const returnToPlatform = (): void => {
-    // Tenant oturumunu (impersonate token) kapat; platform JWT ayrı anahtarda durur.
     clearSession()
     window.location.assign('/platform')
   }
@@ -29,22 +31,85 @@ export function SupportBanner(): JSX.Element | null {
   )
 }
 
-/** Kullanım süresi ≤7 gün (veya dolmuş) → o kooperatifin tüm kullanıcıları için uyarı. */
-export function UsageExpiryBanner(): JSX.Element | null {
-  const { activeMembership } = useAuth()
-  const expiresAt = activeMembership?.tenant.usageExpiresAt ?? null
-  const days = daysRemaining(expiresAt)
-  if (days === null || days > USAGE_WARNING_DAYS) return null
+function usePlatformContact(): PlatformContact | null {
+  const { token, user } = useAuth()
+  const [contact, setContact] = useState<PlatformContact | null>(null)
 
-  const over = days <= 0
+  useEffect(() => {
+    if (!token || !user) {
+      setContact(null)
+      return
+    }
+    let alive = true
+    fetchPlatformContact(token)
+      .then((c) => {
+        if (alive) setContact(c)
+      })
+      .catch(() => {
+        if (alive) setContact(null)
+      })
+    return () => {
+      alive = false
+    }
+  }, [token, user])
+
+  return contact
+}
+
+function remainingLabel(days: number): string {
+  if (days <= 1) return 'Kalan: bugün son gün'
+  return `Kalan: ${days} gün`
+}
+
+/**
+ * Demo kooperatif: ince bilgi şeridi (kapatılamaz).
+ * İlk günlerde mavi; son 2 günde turuncu. Son gün: “bugün son gün”.
+ */
+export function DemoUsageBanner(): JSX.Element | null {
+  const { activeMembership } = useAuth()
+  const contact = usePlatformContact()
+  const tenant = activeMembership?.tenant
+  if (!tenant?.isDemo) return null
+
+  const days = daysRemaining(tenant.demoExpiresAt ?? null)
+  if (days === null || days <= 0) return null
+
+  const urgent = days <= 2
   return (
     <div
-      className={`top-banner ${over ? 'top-banner--expiry-over' : 'top-banner--expiry'}`}
-      role="alert"
+      className={`top-banner top-banner--strip ${urgent ? 'top-banner--strip-warn' : 'top-banner--strip-info'}`}
+      role="status"
     >
-      {over
-        ? `Kullanım süreniz ${formatDate(expiresAt)} tarihinde doldu. Lütfen hizmet sağlayıcınızla iletişime geçin.`
-        : `Kullanım süreniz ${days} gün içinde (${formatDate(expiresAt)}) dolacak. Kesinti yaşamamak için hizmet sağlayıcınızla iletişime geçin.`}
+      <span className="top-banner__strip-text">
+        Demo sürümünü kullanıyorsunuz · {remainingLabel(days)} · Tam sürüme geçmek için bizimle iletişime
+        geçin
+      </span>
+      <ContactLinks contact={contact} className="top-banner__contacts" />
+    </div>
+  )
+}
+
+/**
+ * Yıllık kooperatif: son 7 günde uyarı şeridi + iletişim.
+ * Demo kooperatiflerde gösterilmez (DemoUsageBanner kullanılır).
+ */
+export function UsageExpiryBanner(): JSX.Element | null {
+  const { activeMembership } = useAuth()
+  const contact = usePlatformContact()
+  const tenant = activeMembership?.tenant
+  if (!tenant || tenant.isDemo) return null
+
+  const expiresAt = tenant.usageExpiresAt ?? null
+  const days = daysRemaining(expiresAt)
+  if (days === null || days > USAGE_WARNING_DAYS || days <= 0) return null
+
+  return (
+    <div className="top-banner top-banner--strip top-banner--strip-warn" role="alert">
+      <span className="top-banner__strip-text">
+        Kullanım süreniz {formatDate(expiresAt)} tarihinde doluyor · {remainingLabel(days)} · Yenilemek
+        için bizimle iletişime geçin
+      </span>
+      <ContactLinks contact={contact} className="top-banner__contacts" />
     </div>
   )
 }

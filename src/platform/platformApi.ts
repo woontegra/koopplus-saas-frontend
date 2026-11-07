@@ -232,6 +232,12 @@ export type PlatformAnnouncementInput = {
   tenantIds?: string[]
 }
 
+export type PlatformContactSettings = {
+  phone: string
+  email: string
+  whatsapp: string | null
+}
+
 export type PlatformOverview = {
   cards: {
     total: number
@@ -499,6 +505,11 @@ export const platformApi = {
 
   sendTestEmail: (to: string) =>
     req<{ ok: boolean; error: string | null }>('/api/platform/system/test-email', 'POST', { to }),
+
+  getContactSettings: () => req<PlatformContactSettings>('/api/platform/settings/contact', 'GET'),
+
+  updateContactSettings: (body: { phone: string; email: string; whatsapp: string | null }) =>
+    req<PlatformContactSettings>('/api/platform/settings/contact', 'PATCH', body),
 
   regenerateLicense: (id: string) =>
     req<PlatformTenantDetail>(`/api/platform/tenants/${tid(id)}/license/regenerate`, 'POST', {}),

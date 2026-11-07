@@ -10,6 +10,7 @@ import {
   IconHome,
   IconLogout,
   IconSettings,
+  IconShield,
   IconUser,
   IconUsers
 } from '../../components/ui/icons'
@@ -17,6 +18,7 @@ import PlatformAnnouncementsPage from './PlatformAnnouncementsPage'
 import PlatformAuditPage from './PlatformAuditPage'
 import PlatformOnlinePage from './PlatformOnlinePage'
 import PlatformOverviewPage from './PlatformOverviewPage'
+import PlatformSettingsPage from './PlatformSettingsPage'
 import PlatformSystemPage from './PlatformSystemPage'
 import PlatformTenantDetailPage from './PlatformTenantDetailPage'
 import PlatformTenantsPage from './PlatformTenantsPage'
@@ -30,7 +32,8 @@ const NAV: NavItem[] = [
   { to: '/platform/users', label: 'Kullanıcılar', icon: <IconUsers size={16} /> },
   { to: '/platform/online', label: 'Çevrimiçi', icon: <IconUser size={16} /> },
   { to: '/platform/announcements', label: 'Duyurular', icon: <IconBell size={16} /> },
-  { to: '/platform/system', label: 'Sistem', icon: <IconSettings size={16} /> },
+  { to: '/platform/settings', label: 'Ayarlar', icon: <IconSettings size={16} /> },
+  { to: '/platform/system', label: 'Sistem', icon: <IconShield size={16} /> },
   { to: '/platform/audit', label: 'Denetim Kaydı', icon: <IconFileText size={16} /> }
 ]
 
@@ -116,6 +119,7 @@ function PlatformShell(): JSX.Element {
             <Route path="users" element={<PlatformUsersPage />} />
             <Route path="online" element={<PlatformOnlinePage />} />
             <Route path="announcements" element={<PlatformAnnouncementsPage />} />
+            <Route path="settings" element={<PlatformSettingsPage />} />
             <Route path="system" element={<PlatformSystemPage />} />
             <Route path="audit" element={<PlatformAuditPage />} />
             <Route path="*" element={<Navigate to="/platform" replace />} />

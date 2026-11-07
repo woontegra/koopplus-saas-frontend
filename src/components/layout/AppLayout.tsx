@@ -7,7 +7,12 @@ import { getPageTitle } from '../../config/navigation'
 import AppHeader from './AppHeader'
 import Sidebar from './Sidebar'
 import AppFooter from './AppFooter'
-import { AnnouncementBanners, SupportBanner, UsageExpiryBanner } from './TopBanners'
+import {
+  AnnouncementBanners,
+  DemoUsageBanner,
+  SupportBanner,
+  UsageExpiryBanner
+} from './TopBanners'
 import Heartbeat from './Heartbeat'
 import { useProtectNativeTyping } from '../../hooks/useAppKeyboard'
 
@@ -47,6 +52,7 @@ export default function AppLayout(): JSX.Element {
       <Sidebar />
       <div className="app-main">
         <SupportBanner />
+        <DemoUsageBanner />
         <UsageExpiryBanner />
         <AnnouncementBanners />
         <AppHeader

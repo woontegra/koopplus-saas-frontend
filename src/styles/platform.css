@@ -207,6 +207,152 @@
   flex-shrink: 0;
 }
 
+/* İnce demo / süre bilgi şeridi — içeriği itmez, kapatılamaz */
+.top-banner--strip {
+  gap: 10px 16px;
+  padding: 4px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  min-height: 0;
+}
+
+.top-banner--strip-info {
+  background: #eff6ff;
+  color: #1e40af;
+  border-bottom: 1px solid #bfdbfe;
+}
+
+.top-banner--strip-warn {
+  background: #fff7ed;
+  color: #9a3412;
+  border-bottom: 1px solid #fed7aa;
+}
+
+.top-banner__strip-text {
+  text-align: center;
+}
+
+.top-banner__contacts {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+}
+
+.contact-links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+}
+
+.contact-links__item {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+
+.contact-links__item:hover {
+  opacity: 0.85;
+}
+
+/* ---- Erişim engeli ekranı ---- */
+.access-blocked {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: linear-gradient(160deg, #f8fafc 0%, #eef2ff 50%, #f8fafc 100%);
+}
+
+.access-blocked__card {
+  width: min(440px, 100%);
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 28px 24px 22px;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06);
+  text-align: center;
+}
+
+.access-blocked__logo {
+  max-width: 160px;
+  margin: 0 auto 18px;
+}
+
+.access-blocked__status {
+  margin: 0 0 6px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #9a3412;
+}
+
+.access-blocked__tenant {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.access-blocked__message {
+  margin: 0 0 12px;
+  color: #475569;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.access-blocked__reason {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  background: #fff7ed;
+  border-radius: 8px;
+  color: #9a3412;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.access-blocked__contact {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 18px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.access-blocked__contact-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.access-blocked__contact-empty {
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.access-blocked__contact .contact-links__item {
+  color: #1d4ed8;
+}
+
+.access-blocked__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.access-blocked__user {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
 .top-banner--support {
   background: #7c2d12;
   color: #ffedd5;

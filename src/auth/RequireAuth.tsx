@@ -1,10 +1,21 @@
 import { Navigate, useLocation } from 'react-router-dom'
+import AccessBlockedScreen from '../components/auth/AccessBlockedScreen'
 import ForcePasswordChange from '../components/auth/ForcePasswordChange'
 import LicenseActivation from '../components/auth/LicenseActivation'
 import { useAuth } from './AuthContext'
 
 export default function RequireAuth({ children }: { children: JSX.Element }): JSX.Element {
-  const { ready, bootError, token, user, memberships, tenantId, retryBootstrap, logout } = useAuth()
+  const {
+    ready,
+    bootError,
+    token,
+    user,
+    memberships,
+    tenantId,
+    accessBlock,
+    retryBootstrap,
+    logout
+  } = useAuth()
   const location = useLocation()
 
   if (!ready) {
@@ -47,6 +58,10 @@ export default function RequireAuth({ children }: { children: JSX.Element }): JS
 
   // Platform paneli lisans kilidine tabi değil.
   const onPlatform = location.pathname.startsWith('/platform')
+  if (!onPlatform && accessBlock && !user.isPlatformAdmin) {
+    return <AccessBlockedScreen />
+  }
+
   if (!onPlatform && !user.isPlatformAdmin) {
     const pendingAdmin = memberships.filter(
       (m) => m.role === 'ADMIN' && (m.tenant.licensePending || !m.tenant.licenseActivatedAt)
