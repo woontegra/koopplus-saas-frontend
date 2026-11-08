@@ -1,6 +1,8 @@
-import { toastContainsSecret } from './licenseFeedback'
-
 const DEFAULT_ERROR = 'İşlem tamamlanamadı.'
+
+function toastContainsSecret(value: string): boolean {
+  return /activationPassword|aktivasyon şifresi:\s*\S+/i.test(value)
+}
 
 export function safeUserMessage(raw?: string | null, fallback = DEFAULT_ERROR): string {
   const text = (raw ?? '').trim()
