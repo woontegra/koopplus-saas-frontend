@@ -537,6 +537,9 @@ a {
   font-weight: 700;
   text-align: right;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: visible;
+  min-width: 0;
 }
 
 .stat-panel__hint {
@@ -565,8 +568,9 @@ a {
 }
 
 .stat-panel--hero .stat-panel__value {
-  font-size: 24px;
+  font-size: clamp(15px, 1.35vw, 22px);
   line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
 .stat-panel--hero .stat-panel__hint {
@@ -651,7 +655,7 @@ a {
 
 .dashboard__summary-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 10px;
 }
 
@@ -6359,23 +6363,24 @@ td.nowrap {
 .dash-collection {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 22px;
-  width: max-content;
+  justify-content: flex-start;
+  gap: 18px;
+  width: 100%;
   max-width: 100%;
-  margin: 0 auto;
+  margin: 0;
+  min-width: 0;
 }
 
 .dash-ring {
   --pct: 0;
-  width: 272px;
-  height: 272px;
+  width: 168px;
+  height: 168px;
   border-radius: 50%;
   background: conic-gradient(var(--kat-primary) calc(var(--pct) * 1%), #e2e8f0 0);
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  flex: 0 0 auto;
 }
 
 .dash-ring__inner {
@@ -6391,7 +6396,7 @@ td.nowrap {
 }
 
 .dash-ring__inner strong {
-  font-size: 44px;
+  font-size: 28px;
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.05;
@@ -6399,8 +6404,8 @@ td.nowrap {
 }
 
 .dash-ring__inner span {
-  margin-top: 6px;
-  font-size: 15px;
+  margin-top: 4px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--kat-text-muted);
 }
@@ -6409,7 +6414,8 @@ td.nowrap {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 18px;
+  gap: 14px;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -6423,10 +6429,12 @@ td.nowrap {
 .dash-collection__fact strong {
   display: block;
   margin-top: 4px;
-  font-size: 24px;
+  font-size: clamp(16px, 1.4vw, 22px);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  line-height: 1.2;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: visible;
 }
 
 .dash-feed {
@@ -6579,7 +6587,7 @@ td.nowrap {
   }
 
   .dash-collection__fact strong {
-    font-size: 20px;
+    font-size: 18px;
   }
 }
 
@@ -6593,12 +6601,12 @@ td.nowrap {
   }
 
   .dash-ring {
-    width: 200px;
-    height: 200px;
+    width: 148px;
+    height: 148px;
   }
 
   .dash-ring__inner strong {
-    font-size: 32px;
+    font-size: 24px;
   }
 }
 
