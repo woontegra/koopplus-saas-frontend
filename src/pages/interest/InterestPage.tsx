@@ -384,6 +384,11 @@ export default function InterestPage(): JSX.Element {
           </div>
         </div>
 
+        <p className="settings-hint" role="note">
+          Faiz yalnızca yazılma günü gelmiş aylar için uygulanır. Kalan aylar, zamanı gelince yeniden
+          uygulandığında eklenir.
+        </p>
+
         <div className="accruals-form__actions">
           <button
             type="button"
