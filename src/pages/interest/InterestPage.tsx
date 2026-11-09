@@ -649,14 +649,13 @@ function PolicyAppliedMembersModal({
 
           {result?.reliable && result.inactive && (
             <div className="alert alert-info">
-              Bu karar pasif. Aşağıdaki liste, karar pasifken de kayıtlı faiz uygulamalarını
-              gösterir.
+              Bu karar pasif. Bugünkü borç motoru hesabında bu karara bağlı faiz görünmeyebilir.
             </div>
           )}
 
           {result?.reliable && result.members.length === 0 && (
             <EmptyState
-              message="Bu karara bağlı, karar tarihleri içinde kayıtlı faiz uygulaması yok."
+              message="Bugün itibarıyla bu karar tarihleri içinde borç motoruna göre faiz yazılacak üye yok."
               compact
             />
           )}
@@ -668,7 +667,7 @@ function PolicyAppliedMembersModal({
                   <tr>
                     <th>Üye No</th>
                     <th>Ad Soyad / Ünvan</th>
-                    <th className="text-right">Uygulanan Faiz</th>
+                    <th className="text-right">Bugüne kadar yazılan faiz</th>
                   </tr>
                 </thead>
                 <tbody>
