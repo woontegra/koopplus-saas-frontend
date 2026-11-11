@@ -470,23 +470,24 @@ export default function SimpleSettingsPage(): JSX.Element {
     sectionParam === 'sample'
       ? sectionParam
       : 'general'
-  const [section, setSection] = useState<SettingsSection>(
-    initialSection === 'sample' && !isAdmin ? 'general' : initialSection
-  )
+  const [section, setSection] = useState<SettingsSection>(() => {
+    if (!isAdmin && (initialSection === 'sample' || initialSection === 'backup')) return 'general'
+    return initialSection
+  })
   const [loading, setLoading] = useState(true)
   const [settings, setSettings] = useState<AppSettingsAll | null>(null)
   const [backupInfo, setBackupInfo] = useState<BackupInfo | null>(null)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
-    const [settingsRes, backupRes] = await Promise.all([
-      window.api.settings.getAll(),
-      window.api.backup.getInfo()
-    ])
+    const settingsRes = await window.api.settings.getAll()
     if (settingsRes.success && settingsRes.data) setSettings(settingsRes.data)
-    if (backupRes.success && backupRes.data) setBackupInfo(backupRes.data)
+    if (isAdmin) {
+      const backupRes = await window.api.backup.getInfo()
+      if (backupRes.success && backupRes.data) setBackupInfo(backupRes.data)
+    }
     setLoading(false)
-  }, [])
+  }, [isAdmin])
 
   useEffect(() => {
     loadAll()
@@ -495,10 +496,12 @@ export default function SimpleSettingsPage(): JSX.Element {
   const navItems = useMemo(() => {
     const items: Array<{ key: SettingsSection; label: string }> = [
       { key: 'general', label: 'Kooperatif Bilgileri' },
-      { key: 'password', label: 'Şifre Değiştir' },
-      { key: 'backup', label: 'Yedekleme Ayarları' }
+      { key: 'password', label: 'Şifre Değiştir' }
     ]
-    if (isAdmin) items.push({ key: 'sample', label: 'Örnek Veriler' })
+    if (isAdmin) {
+      items.push({ key: 'backup', label: 'Yedekleme Ayarları' })
+      items.push({ key: 'sample', label: 'Örnek Veriler' })
+    }
     return items
   }, [isAdmin])
 
@@ -546,7 +549,7 @@ export default function SimpleSettingsPage(): JSX.Element {
               }}
             />
           )}
-          {section === 'backup' && (
+          {section === 'backup' && isAdmin && (
             <BackupSettingsSection info={backupInfo} onRefresh={loadAll} />
           )}
           {section === 'sample' && isAdmin && <SampleDataSection />}

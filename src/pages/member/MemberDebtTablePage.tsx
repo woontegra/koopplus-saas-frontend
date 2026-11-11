@@ -26,7 +26,7 @@ function isExportCancelled(error?: string): boolean {
 }
 
 export default function MemberDebtTablePage(): JSX.Element {
-  const { canWrite } = useAuth()
+  const { canWrite, isAdmin } = useAuth()
   const toast = useActionToast()
   const ask = useAskDialog()
   const [actionBusy, setActionBusy] = useState(false)
@@ -437,7 +437,12 @@ export default function MemberDebtTablePage(): JSX.Element {
           <p className="member-debt-page__subtitle">Aidat, tahsilat ve faiz dağılımını tek ekranda izleyin</p>
         </div>
         <div className="member-debt-page__actions">
-          <button type="button" className="btn" onClick={() => setShowMemberModal(true)}>
+          <button
+            type="button"
+            className="btn"
+            disabled={!canWrite}
+            onClick={() => setShowMemberModal(true)}
+          >
             Yeni Üye
           </button>
           <button
@@ -462,6 +467,7 @@ export default function MemberDebtTablePage(): JSX.Element {
           <button
             type="button"
             className="btn btn-primary"
+            disabled={!canWrite}
             onClick={() => {
               if (!requirePartner()) return
               setShowDueModal(true)
@@ -497,7 +503,7 @@ export default function MemberDebtTablePage(): JSX.Element {
           onPdf={handlePdf}
           onExcel={handleExcel}
           onAllMembersPdf={() => setShowAllMembersPdfModal(true)}
-          onBackup={handleBackup}
+          onBackup={isAdmin ? handleBackup : undefined}
         />
       </ErrorBoundary>
 
