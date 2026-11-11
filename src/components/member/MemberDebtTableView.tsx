@@ -522,7 +522,7 @@ export default function MemberDebtTableView({
                 <strong>{formatMoney(remainingPrincipalTotal)}</strong>
               </div>
               <div>
-                <span>Faiz</span>
+                <span>Kalan faiz (ödenmemiş)</span>
                 <strong>{formatMoney(remainingInterestTotal)}</strong>
               </div>
             </div>

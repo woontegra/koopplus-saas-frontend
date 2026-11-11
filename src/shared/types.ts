@@ -378,23 +378,25 @@ export interface InterestPolicyDeleteResult {
   message: string
 }
 
-/** Faiz kararı satırında salt okunur: bu karara bağlı kayıtlı faiz uygulamaları. */
+/** Faiz kararı satırında: borç motoru özeti (önce faiz). */
 export interface InterestPolicyAppliedMember {
-  partner_id: number
+  partner_id: string | number
   partner_no: string
   full_name: string
   accrued_interest: number
+  paid_interest?: number
+  remaining_interest?: number
 }
 
 export interface InterestPolicyAppliedMembersResult {
-  policy_id: number
+  policy_id: string | number
   start_date: string
   end_date: string
   monthly_rate: number
   is_active: number
   report_date: string
   members: InterestPolicyAppliedMember[]
-  /** Karar şu an pasif. Liste yine de kayıtlı uygulamaları gösterir. */
+  /** Karar şu an pasif. */
   inactive: boolean
   /** Defter kaynağında kullanılmaz; geriye dönük alan. */
   special_period_excluded: boolean
@@ -569,11 +571,12 @@ export interface InterestRunResult {
 }
 
 export interface InterestRun {
-  id: number
+  id: number | string
   period_year: number
   period_month: number
   calculation_date: string
-  policy_id: number
+  interest_written_through?: string | null
+  policy_id: number | string
   interest_rate: number
   total_principal: number
   total_interest: number

@@ -273,7 +273,7 @@ export default function InterestPage(): JSX.Element {
     }
   }
 
-  const openDetail = async (runId: number): Promise<void> => {
+  const openDetail = async (runId: number | string): Promise<void> => {
     const res = await window.api.interest.getRunDetail(runId)
     if (res.success && res.data) setDetail(res.data)
     else await ask.alert(res.error ?? 'Detay yüklenemedi')
@@ -524,13 +524,13 @@ export default function InterestPage(): JSX.Element {
             <table className="data-table data-table--selectable">
               <thead>
                 <tr>
-                  <th>Uygulama Tarihi</th>
+                  <th>Yazılma ufku</th>
                   <th>Tarih Aralığı</th>
                   <th className="text-right">Aylık Oran</th>
                   <th className="text-right">{entitySingular}</th>
                   <th className="text-right">Borç</th>
                   <th className="text-right">Toplam Ana Borç</th>
-                  <th className="text-right">Toplam Faiz</th>
+                  <th className="text-right">İşlenen toplam faiz (ödenenler dahil)</th>
                   <th>Açıklama</th>
                   <th>Detay</th>
                 </tr>
@@ -538,7 +538,11 @@ export default function InterestPage(): JSX.Element {
               <tbody>
                 {applications.map((run) => (
                   <tr key={run.id}>
-                    <td>{formatDate(run.calculation_date)}</td>
+                    <td>
+                      {run.interest_written_through
+                        ? `${formatDate(run.interest_written_through)}'ya kadar`
+                        : formatDate(run.calculation_date)}
+                    </td>
                     <td>{formatRunRange(run)}</td>
                     <td className="text-right">%{run.interest_rate}</td>
                     <td className="text-right">{run.affected_partner_count}</td>
@@ -547,7 +551,7 @@ export default function InterestPage(): JSX.Element {
                     <td className="money debit">{formatMoney(run.total_interest)}</td>
                     <td className="cell-ellipsis">{run.description || '—'}</td>
                     <td>
-                      {run.id > 0 ? (
+                      {run.id ? (
                         <button type="button" className="btn btn-sm" onClick={() => openDetail(run.id)}>
                           Detay
                         </button>
@@ -649,39 +653,53 @@ function PolicyAppliedMembersModal({
 
           {result?.reliable && result.inactive && (
             <div className="alert alert-info">
-              Bu karar pasif. Aşağıdaki liste, karar pasifken de kayıtlı faiz uygulamalarını
+              Bu karar pasif. Aşağıdaki liste, karar kapsamındaki üyelerin motor faiz özetini
               gösterir.
             </div>
           )}
 
           {result?.reliable && result.members.length === 0 && (
             <EmptyState
-              message="Bu karara bağlı, karar tarihleri içinde kayıtlı faiz uygulaması yok."
+              message="Bu karar kapsamında bugüne kadar işleyen faiz bulunan üye yok."
               compact
             />
           )}
 
           {result?.reliable && result.members.length > 0 && (
-            <div className="table-wrap table-wrap--compact">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Üye No</th>
-                    <th>Ad Soyad / Ünvan</th>
-                    <th className="text-right">Bugüne kadar yazılan faiz</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.members.map((member) => (
-                    <tr key={member.partner_id}>
-                      <td>{member.partner_no}</td>
-                      <td>{member.full_name}</td>
-                      <td className="text-right">{formatMoney(member.accrued_interest)}</td>
+            <>
+              <div className="table-wrap table-wrap--compact">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Üye No</th>
+                      <th>Ad Soyad / Ünvan</th>
+                      <th className="text-right">Toplam işleyen faiz</th>
+                      <th className="text-right">Ödenen faiz</th>
+                      <th className="text-right">Kalan faiz</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {result.members.map((member) => (
+                      <tr key={String(member.partner_id)}>
+                        <td>{member.partner_no}</td>
+                        <td>{member.full_name}</td>
+                        <td className="text-right">{formatMoney(member.accrued_interest)}</td>
+                        <td className="text-right">
+                          {formatMoney(member.paid_interest ?? 0)}
+                        </td>
+                        <td className="text-right">
+                          {formatMoney(member.remaining_interest ?? 0)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="form-hint" style={{ marginTop: '0.75rem' }}>
+                Ödemeler önce faize mahsup edilir. Kalan faiz, Üye Borç Tablosu’ndaki tutarla
+                aynıdır.
+              </p>
+            </>
           )}
         </div>
       </div>

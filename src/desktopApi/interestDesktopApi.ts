@@ -263,10 +263,13 @@ export const interestDesktopApi = {
     return { success: true, data: res.data.map((r) => mapRun(auth.data!.tenantId, r)) }
   },
 
-  async getRunDetail(runId: number): Promise<ApiResult<InterestRunDetail>> {
+  async getRunDetail(runId: number | string): Promise<ApiResult<InterestRunDetail>> {
     const auth = authTenant()
     if (!auth.success || !auth.data) return { success: false, error: auth.error }
-    const id = resolveMapped(auth.data.tenantId, runId, 'irun')
+    const id =
+      typeof runId === 'string'
+        ? { success: true as const, data: runId }
+        : resolveMapped(auth.data.tenantId, runId, 'irun')
     if (!id.success || !id.data) return { success: false, error: id.error }
     const res = await desktopRequest<InterestRunDetail>(`/api/interest/runs/${id.data}`)
     if (!res.success || !res.data) return res

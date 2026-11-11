@@ -39,9 +39,15 @@ export default function InterestRunDetailModal({
         <div className="modal-body interest-run-detail-modal__body">
           <div className="interest-run-detail-modal__summary">
             <div className="interest-run-detail-modal__summary-card">
-              <span className="interest-run-detail-modal__summary-label">Hesaplama Tarihi</span>
+              <span className="interest-run-detail-modal__summary-label">
+                {run.interest_written_through
+                  ? `${formatDate(run.interest_written_through)}'ya kadar yazılan faiz`
+                  : 'Yazılma ufku'}
+              </span>
               <span className="interest-run-detail-modal__summary-value">
-                {formatDate(run.calculation_date)}
+                {run.interest_written_through
+                  ? formatDate(run.interest_written_through)
+                  : formatDate(run.calculation_date)}
               </span>
             </div>
             <div className="interest-run-detail-modal__summary-card">
@@ -61,7 +67,9 @@ export default function InterestRunDetailModal({
               </span>
             </div>
             <div className="interest-run-detail-modal__summary-card interest-run-detail-modal__summary-card--debit">
-              <span className="interest-run-detail-modal__summary-label">Toplam Faiz</span>
+              <span className="interest-run-detail-modal__summary-label">
+                İşlenen toplam faiz (ödenenler dahil)
+              </span>
               <span className="interest-run-detail-modal__summary-value money debit">
                 {formatMoney(run.total_interest)}
               </span>
