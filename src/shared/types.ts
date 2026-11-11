@@ -1809,6 +1809,7 @@ export type MemberDebtRowStatus =
   | 'unpaid'
   | 'not_due'
   | 'interest_only'
+  | 'payment_only'
 
 export interface MemberDebtTableRow {
   ledger_entry_id: number

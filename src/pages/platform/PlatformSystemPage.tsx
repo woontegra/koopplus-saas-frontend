@@ -177,6 +177,31 @@ export default function PlatformSystemPage(): JSX.Element {
             </DataPanel>
           </div>
 
+          <DataPanel title="Tutarlılık denetimi">
+            {health.consistencyAudit ? (
+              <dl className="profile-info">
+                <dt>Son çalışma</dt>
+                <dd>{formatDateTime(health.consistencyAudit.lastRunAt)}</dd>
+                <dt>Sonuç</dt>
+                <dd>
+                  <Badge tone={health.consistencyAudit.ok ? 'green' : 'red'}>
+                    {health.consistencyAudit.ok
+                      ? 'Tutarlı'
+                      : `${health.consistencyAudit.violationCount} tutarsızlık`}
+                  </Badge>
+                </dd>
+                <dt>Kapsam</dt>
+                <dd>
+                  {health.consistencyAudit.tenantCount} kooperatif / {health.consistencyAudit.partnerCount} üye
+                </dd>
+                <dt>Özet</dt>
+                <dd>{health.consistencyAudit.summary}</dd>
+              </dl>
+            ) : (
+              <p className="muted">Denetim henüz çalışmadı (günlük ~02:00).</p>
+            )}
+          </DataPanel>
+
           <DataPanel title="SMTP durumu">
             <dl className="profile-info">
               <dt>Yapılandırma</dt>

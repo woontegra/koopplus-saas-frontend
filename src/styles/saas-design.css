@@ -305,6 +305,11 @@ body {
   color: #64748b;
 }
 
+.member-debt-status--payment {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
 /* Sekmeler / filtre pill */
 .member-debt-tabs {
   display: inline-flex;

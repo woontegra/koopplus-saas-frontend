@@ -114,6 +114,7 @@ function filterDebtRows(
 }
 
 function dueInterestAllocated(row: MemberDebtTableRow): number {
+  if (row.is_payment_only || row.is_interest_only) return 0
   return (row.payment_allocations ?? []).reduce(
     (sum, item) => sum + (item.applied_to_this_due_interest ?? 0),
     0
@@ -121,6 +122,7 @@ function dueInterestAllocated(row: MemberDebtTableRow): number {
 }
 
 function duePrincipalAllocated(row: MemberDebtTableRow): number {
+  if (row.is_payment_only || row.is_interest_only) return 0
   if (row.paid_principal_total != null) return row.paid_principal_total
   const onTime = row.paid_principal_on_time ?? 0
   const late = row.paid_principal_late ?? 0
@@ -144,6 +146,7 @@ function paymentSourceLabel(item: MemberPaymentHistoryItem): string {
 }
 
 function rowDisplayStatus(row: MemberDebtTableRow, asOfDate: string): string {
+  if (row.is_payment_only || row.row_status === 'payment_only') return 'Ödeme'
   if (row.is_interest_only) return 'Faiz işliyor'
   if (row.row_status === 'not_due' || row.due_date >= asOfDate) return 'Vadesi gelmedi'
   if ((row.remaining_due ?? 0) <= EPSILON && (row.remaining_interest ?? row.delay_interest ?? 0) <= EPSILON) {
@@ -157,6 +160,7 @@ function rowDisplayStatus(row: MemberDebtTableRow, asOfDate: string): string {
 }
 
 function rowStatusTone(row: MemberDebtTableRow, asOfDate: string): string {
+  if (row.is_payment_only || row.row_status === 'payment_only') return 'payment'
   if (row.is_interest_only) return 'not_due'
   if (row.row_status === 'not_due' || row.due_date >= asOfDate) return 'not_due'
   if ((row.remaining_due ?? 0) <= EPSILON && (row.remaining_interest ?? row.delay_interest ?? 0) <= EPSILON) {
@@ -859,10 +863,14 @@ export default function MemberDebtTableView({
                         >
                           <td className="member-debt-table__sticky-col">{row.period_label}</td>
                           <td className="member-debt-table__sticky-col-2">
-                            {row.is_interest_only ? '—' : formatDate(row.due_date)}
+                            {row.is_interest_only || row.is_payment_only
+                              ? '—'
+                              : formatDate(row.due_date)}
                           </td>
                           <td className="money debit text-right">
-                            {row.is_interest_only || row.monthly_due <= EPSILON
+                            {row.is_interest_only ||
+                            row.is_payment_only ||
+                            row.monthly_due <= EPSILON
                               ? '—'
                               : formatMoney(row.monthly_due)}
                           </td>
@@ -870,19 +878,21 @@ export default function MemberDebtTableView({
                             {formatMoney(row.month_collection ?? 0)}
                           </td>
                           <td className="money text-right money-interest">
-                            {row.is_interest_only
+                            {row.is_interest_only || row.is_payment_only
                               ? '—'
                               : dueInterestAllocated(row) > EPSILON
                                 ? formatMoney(dueInterestAllocated(row))
                                 : '—'}
                           </td>
                           <td className="money text-right money-interest">
-                            {(row.accrued_interest_total ?? 0) > EPSILON
-                              ? formatMoney(row.accrued_interest_total!)
-                              : '—'}
+                            {row.is_payment_only
+                              ? '—'
+                              : (row.accrued_interest_total ?? 0) > EPSILON
+                                ? formatMoney(row.accrued_interest_total!)
+                                : '—'}
                           </td>
                           <td className="money text-right money-principal">
-                            {row.is_interest_only
+                            {row.is_interest_only || row.is_payment_only
                               ? '—'
                               : duePrincipalAllocated(row) > EPSILON
                                 ? formatMoney(duePrincipalAllocated(row))
@@ -925,7 +935,9 @@ export default function MemberDebtTableView({
                             </>
                           )}
                           <td className="money debit text-right">
-                            {row.is_interest_only ? '—' : formatMoney(row.remaining_due)}
+                            {row.is_interest_only || row.is_payment_only
+                              ? '—'
+                              : formatMoney(row.remaining_due)}
                           </td>
                           <td>
                             <span

@@ -339,6 +339,15 @@ export type PlatformSystemHealth = {
     from: string | null
     error: string | null
   }
+  /** Salt okunur tutarlılık denetiminin son sonucu (henüz çalışmadıysa null). */
+  consistencyAudit?: {
+    lastRunAt: string
+    ok: boolean
+    tenantCount: number
+    partnerCount: number
+    violationCount: number
+    summary: string
+  } | null
   volume: { path: string; freeBytes: number | null; totalBytes: number | null }
   version: { commit: string | null; service: string }
   generatedAt: string
