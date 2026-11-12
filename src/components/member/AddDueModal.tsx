@@ -5,6 +5,7 @@ import { formatShareRatioTr, resolveShareRatio } from '@shared/shareRatio'
 import PartnerSearchSelect from '../partners/PartnerSearchSelect'
 import MoneyAmountInput from '../ui/MoneyAmountInput'
 import { MONTH_NAMES } from '../../utils/format'
+import { resolveActivePeriod } from '../../utils/usage'
 import { useActionToast } from '../../hooks/useActionToast'
 
 interface AddDueModalProps {
@@ -28,9 +29,9 @@ export default function AddDueModal({
   onSaved
 }: AddDueModalProps): JSX.Element {
   const toast = useActionToast()
-  const now = new Date()
+  const active = resolveActivePeriod()
   const [partnerId, setPartnerId] = useState<number | ''>(initialPartnerId ?? '')
-  const [periodYear, setPeriodYear] = useState(now.getFullYear())
+  const [periodYear, setPeriodYear] = useState(active.year)
   const [selectedMonths, setSelectedMonths] = useState<number[]>([])
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')

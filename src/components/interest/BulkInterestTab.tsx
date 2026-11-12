@@ -17,15 +17,16 @@ import {
   todayISO
 } from '../../utils/format'
 import { buildYearOptions } from '../../shared/yearOptions'
+import { resolveActivePeriod } from '../../utils/usage'
 import { useActionToast } from '../../hooks/useActionToast'
 import { useAskDialog } from '../../hooks/useAskDialog'
 
 export default function BulkInterestTab(): JSX.Element {
   const toast = useActionToast()
   const ask = useAskDialog()
-  const now = new Date()
-  const [periodMonth, setPeriodMonth] = useState(now.getMonth() + 1)
-  const [periodYear, setPeriodYear] = useState(now.getFullYear())
+  const active = resolveActivePeriod()
+  const [periodMonth, setPeriodMonth] = useState(active.month)
+  const [periodYear, setPeriodYear] = useState(active.year)
   const [calculationDate, setCalculationDate] = useState(todayISO())
   const [description, setDescription] = useState('')
   const [preview, setPreview] = useState<InterestPreviewResult | null>(null)
@@ -34,7 +35,7 @@ export default function BulkInterestTab(): JSX.Element {
   const [result, setResult] = useState<InterestRunResult | null>(null)
   const [error, setError] = useState('')
 
-  const yearOptions = useMemo(() => buildYearOptions(now.getFullYear()), [])
+  const yearOptions = useMemo(() => buildYearOptions(active.year), [active.year])
 
   const defaultDescription = useMemo(
     () => `${formatMonthYear(periodMonth, periodYear)} gecikme faizi`,

@@ -12,6 +12,7 @@ import type {
   SimpleSettingsPayload
 } from '@shared/types'
 import { desktopRequest } from './apiResult'
+import { resolveActivePeriod } from '../utils/usage'
 
 export const settingsDesktopApi = {
   async get(): Promise<ApiResult<Settings>> {
@@ -47,15 +48,8 @@ export const settingsDesktopApi = {
   async getActivePeriod(): Promise<ApiResult<ActivePeriod>> {
     const res = await desktopRequest<ActivePeriod>('/api/settings/active-period')
     if (res.success && res.data) return res
-    const settings = await settingsDesktopApi.get()
-    if (!settings.success || !settings.data) return { success: false, error: settings.error ?? res.error }
-    return {
-      success: true,
-      data: {
-        year: Number(settings.data.active_period_year) || new Date().getFullYear(),
-        month: Number(settings.data.active_period_month) || new Date().getMonth() + 1
-      }
-    }
+    // API yoksa: TR bugünü (eski ayar alanına düşme)
+    return { success: true, data: resolveActivePeriod() }
   },
 
   async getSimple(): Promise<ApiResult<SimpleSettingsPayload>> {

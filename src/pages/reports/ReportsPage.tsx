@@ -22,6 +22,7 @@ import PartnerLedgerView from '../../components/reports/PartnerLedgerView'
 import MemberAccountStatementPanel from '../../components/reports/MemberAccountStatementPanel'
 import PartnerSearchSelect from '../../components/partners/PartnerSearchSelect'
 import { formatDate, formatMoney, MONTH_NAMES } from '../../utils/format'
+import { resolveActivePeriod } from '../../utils/usage'
 import { parseMoneyInput } from '@shared/moneyInput'
 import MoneyAmountInput from '../../components/ui/MoneyAmountInput'
 import { buildYearOptions } from '@shared/yearOptions'
@@ -71,7 +72,7 @@ type ReportData =
 
 export default function ReportsPage(): JSX.Element {
   const [searchParams] = useSearchParams()
-  const now = new Date()
+  const activeNow = resolveActivePeriod()
 
   const initialReport = (searchParams.get('report') as ReportType) || 'general-balance'
   const initialPartnerId = Number(searchParams.get('partnerId')) || 0
@@ -80,7 +81,10 @@ export default function ReportsPage(): JSX.Element {
     REPORT_ITEMS.some((r) => r.key === initialReport) ? initialReport : 'general-balance'
   )
   const [partners, setPartners] = useState<Partner[]>([])
-  const [activePeriod, setActivePeriod] = useState({ month: now.getMonth() + 1, year: now.getFullYear() })
+  const [activePeriod, setActivePeriod] = useState({
+    month: activeNow.month,
+    year: activeNow.year
+  })
 
   const [gbFilters, setGbFilters] = useState({
     is_active: null as number | null,
@@ -94,8 +98,8 @@ export default function ReportsPage(): JSX.Element {
   })
   const [debtorMinBalanceText, setDebtorMinBalanceText] = useState('')
   const [nonPayingFilters, setNonPayingFilters] = useState({
-    period_month: now.getMonth() + 1,
-    period_year: now.getFullYear(),
+    period_month: activeNow.month,
+    period_year: activeNow.year,
     is_active: null as number | null
   })
   const [accrualFilters, setAccrualFilters] = useState({

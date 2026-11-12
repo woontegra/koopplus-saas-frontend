@@ -45,3 +45,9 @@ export function usageLabel(days: number | null): string {
   if (days <= 0) return 'Süre doldu'
   return `${days} gün kaldı`
 }
+
+/** Aktif dönem = Türkiye saatiyle bugünün ayı/yılı (ayar kaydından bağımsız). */
+export function resolveActivePeriod(now: Date = new Date()): { year: number; month: number } {
+  const { y, m } = ymdInTimeZone(now)
+  return { year: y, month: m }
+}

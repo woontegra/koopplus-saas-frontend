@@ -6,6 +6,7 @@ import { useAuth } from '../../auth/AuthContext'
 import { useCooperatives } from '../../context/CooperativeContext'
 import { loadLastTenantId } from '../../auth/session'
 import { formatMonthYear } from '../../utils/format'
+import { resolveActivePeriod } from '../../utils/usage'
 import { IconBuilding } from '../ui/icons'
 import NavMenuButton from './NavMenuButton'
 import ProfileMenu from './ProfileMenu'
@@ -19,13 +20,12 @@ interface AppHeaderProps {
 
 export default function AppHeader({ settings, pageTitle }: AppHeaderProps): JSX.Element {
   const now = new Date()
-  const activeMonth = Number(settings?.active_period_month) || now.getMonth() + 1
-  const activeYear = Number(settings?.active_period_year) || now.getFullYear()
+  const { month: activeMonth, year: activeYear } = resolveActivePeriod(now)
   const periodLabel = formatMonthYear(activeMonth, activeYear)
-  const day = now.getDate()
-  const monthName = now.toLocaleDateString('tr-TR', { month: 'long' })
-  const year = now.getFullYear()
-  const weekday = now.toLocaleDateString('tr-TR', { weekday: 'long' })
+  const day = now.toLocaleDateString('tr-TR', { day: 'numeric', timeZone: 'Europe/Istanbul' })
+  const monthName = now.toLocaleDateString('tr-TR', { month: 'long', timeZone: 'Europe/Istanbul' })
+  const year = activeYear
+  const weekday = now.toLocaleDateString('tr-TR', { weekday: 'long', timeZone: 'Europe/Istanbul' })
   const infoLine = `${day} ${monthName} ${year}, ${weekday} · Aktif dönem: ${periodLabel}`
 
   const { memberships, activeMembership } = useAuth()

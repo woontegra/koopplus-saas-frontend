@@ -1,15 +1,14 @@
 import { APP_VERSION, DEVELOPER_CREDIT } from '@shared/branding'
 import type { Settings } from '@shared/types'
 import { formatDateTime, formatMonthYear } from '../../utils/format'
+import { resolveActivePeriod } from '../../utils/usage'
 
 interface AppFooterProps {
   settings: Settings | null
 }
 
 export default function AppFooter({ settings }: AppFooterProps): JSX.Element {
-  const now = new Date()
-  const activeMonth = Number(settings?.active_period_month) || now.getMonth() + 1
-  const activeYear = Number(settings?.active_period_year) || now.getFullYear()
+  const { month: activeMonth, year: activeYear } = resolveActivePeriod()
   const periodLabel = formatMonthYear(activeMonth, activeYear)
 
   const lastBackup = settings?.last_backup_date

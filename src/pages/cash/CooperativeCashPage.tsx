@@ -20,6 +20,7 @@ import { useAskDialog } from '../../hooks/useAskDialog'
 import DataPanel from '../../components/ui/DataPanel'
 import StatPanel from '../../components/ui/StatPanel'
 import { formatDate, formatMoney, formatPeriod, MONTH_NAMES, todayISO } from '../../utils/format'
+import { resolveActivePeriod } from '../../utils/usage'
 import { formatMoneyInputFromNumber, parseMoneyInput } from '@shared/moneyInput'
 import MoneyAmountInput from '../../components/ui/MoneyAmountInput'
 
@@ -78,8 +79,8 @@ export default function CooperativeCashPage(): JSX.Element {
   const [closingPeriod, setClosingPeriod] = useState(false)
 
   const yearOptions = useMemo(() => buildYearOptions(), [])
-  const periodYear = filters.period_year ?? new Date().getFullYear()
-  const periodMonth = filters.period_month ?? new Date().getMonth() + 1
+  const periodYear = filters.period_year ?? resolveActivePeriod().year
+  const periodMonth = filters.period_month ?? resolveActivePeriod().month
   const periodLabel = formatPeriod(periodYear, periodMonth)
   const next = nextPeriod(periodYear, periodMonth)
   const nextPeriodLabel = formatPeriod(next.year, next.month)

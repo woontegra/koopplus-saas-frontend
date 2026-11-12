@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { daysRemaining } from './usage.ts'
+import { daysRemaining, resolveActivePeriod } from './usage.ts'
 
 describe('daysRemaining (takvim günü, Europe/Istanbul)', () => {
   it('08.11.2026 → 08.11.2027 = 365', () => {
@@ -14,5 +14,18 @@ describe('daysRemaining (takvim günü, Europe/Istanbul)', () => {
     const now = new Date('2026-11-08T00:00:01.000Z')
     assert.equal(Math.ceil((new Date(end).getTime() - now.getTime()) / 86_400_000), 366)
     assert.equal(daysRemaining(end, now), 365)
+  })
+})
+
+describe('resolveActivePeriod (TR otomatik aktif dönem)', () => {
+  it('ayın son günü 23:59 TR → o ay; ertesi gün 00:30 TR → yeni ay', () => {
+    assert.deepEqual(resolveActivePeriod(new Date('2026-11-30T20:59:00.000Z')), {
+      year: 2026,
+      month: 11
+    })
+    assert.deepEqual(resolveActivePeriod(new Date('2026-11-30T21:30:00.000Z')), {
+      year: 2026,
+      month: 12
+    })
   })
 })
