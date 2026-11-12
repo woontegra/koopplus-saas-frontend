@@ -543,9 +543,15 @@ export interface RangeInterestPreviewResult {
   rows: RangeInterestPreviewRow[]
 }
 
+export interface RangeInterestSkipMember {
+  partner_no: string
+  full_name: string
+  conflicting_label?: string
+}
+
 export interface RangeInterestApplyResult {
-  run_id: number
-  policy_id: number
+  run_id: number | string | null
+  policy_id: number | string | null
   processed_debt_count: number
   processed_month_count: number
   processed_partner_count: number
@@ -553,11 +559,14 @@ export interface RangeInterestApplyResult {
   total_interest: number
   skipped_count: number
   message: string
+  skipped_already_in_scope?: RangeInterestSkipMember[]
+  skipped_overlap_conflict?: RangeInterestSkipMember[]
 }
 
 export interface SaveRangeInterestPolicyResult {
   policy: InterestPolicy
   message: string
+  overlap_warning?: string | null
 }
 
 export interface InterestRunResult {

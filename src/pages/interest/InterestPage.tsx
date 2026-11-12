@@ -151,7 +151,11 @@ export default function InterestPage(): JSX.Element {
 
     if (res.success && res.data) {
       setSuccess(res.data.message)
-      toast.success('Faiz kararı kaydedildi', res.data.message)
+      if (res.data.overlap_warning) {
+        toast.fail('Bazı üyeler eklenemedi', res.data.overlap_warning)
+      } else {
+        toast.success('Faiz kararı kaydedildi', res.data.message)
+      }
       await loadPolicies()
     } else {
       setError(res.error ?? 'Faiz kararı kaydedilemedi')
@@ -229,7 +233,14 @@ export default function InterestPage(): JSX.Element {
     if (res.success && res.data) {
       setApplyResult(res.data)
       setSuccess(res.data.message)
-      toast.success('Faiz işlemi tamamlandı', res.data.message)
+      const hasSkipWarn =
+        (res.data.skipped_already_in_scope?.length ?? 0) > 0 ||
+        (res.data.skipped_overlap_conflict?.length ?? 0) > 0
+      if (hasSkipWarn) {
+        toast.fail('Bazı üyeler atlandı', res.data.message)
+      } else {
+        toast.success('Faiz işlemi tamamlandı', res.data.message)
+      }
       await Promise.all([loadPolicies(), loadApplications()])
       await loadPreview()
     } else {
@@ -285,7 +296,18 @@ export default function InterestPage(): JSX.Element {
     <div className="interest-page">
       {error && <div className="alert alert-error">{error}</div>}
       {(success || applyResult?.message) && (
-        <div className="alert alert-success">{success || applyResult?.message}</div>
+        <div
+          className={
+            (applyResult?.skipped_already_in_scope?.length ?? 0) > 0 ||
+            (applyResult?.skipped_overlap_conflict?.length ?? 0) > 0 ||
+            (success?.includes('zaten faiz uygulanmış') ?? false) ||
+            (success?.includes('kararında zaten kapsamda') ?? false)
+              ? 'alert alert-warning'
+              : 'alert alert-success'
+          }
+        >
+          {success || applyResult?.message}
+        </div>
       )}
 
       <DataPanel title="Faiz Kararı ve Uygulama" subtitle="Tarih, oran ve üye kapsamı ile faiz kararı tanımlayın">
@@ -814,8 +836,20 @@ function PolicyEditModal({
       member_ids: form.scope_type === 'SELECTED_MEMBERS' ? form.member_ids ?? [] : []
     })
     setSaving(false)
-    if (res.success) onSaved()
-    else {
+    if (res.success) {
+      const warning =
+        res.data &&
+        typeof res.data === 'object' &&
+        'overlap_warning' in res.data &&
+        typeof (res.data as { overlap_warning?: unknown }).overlap_warning === 'string'
+          ? String((res.data as { overlap_warning: string }).overlap_warning)
+          : ''
+      if (warning) {
+        setError(warning)
+        toast.fail('Bazı üyeler eklenemedi', warning)
+      }
+      onSaved()
+    } else {
       setError(res.error ?? 'Güncelleme başarısız')
       toast.fail('Faiz kararı güncellenemedi', res.error)
     }
