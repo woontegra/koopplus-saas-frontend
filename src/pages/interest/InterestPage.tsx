@@ -629,15 +629,21 @@ function PolicyAppliedMembersModal({
           <div className="detail-grid">
             <div>
               <span className="detail-field__label">Başlangıç</span>
-              <span className="detail-field__value">{formatDate(policy.start_date)}</span>
+              <span className="detail-field__value">
+                {formatDate(result?.start_date ?? policy.start_date)}
+              </span>
             </div>
             <div>
               <span className="detail-field__label">Bitiş</span>
-              <span className="detail-field__value">{formatDate(policy.end_date)}</span>
+              <span className="detail-field__value">
+                {formatDate(result?.end_date ?? policy.end_date)}
+              </span>
             </div>
             <div>
               <span className="detail-field__label">Aylık faiz oranı</span>
-              <span className="detail-field__value">%{policy.monthly_rate}</span>
+              <span className="detail-field__value">
+                %{(result?.monthly_rate ?? policy.monthly_rate)}
+              </span>
             </div>
           </div>
 
@@ -717,6 +723,7 @@ function PolicyEditModal({
   onSaved: () => void
 }): JSX.Element {
   const toast = useActionToast()
+  const ask = useAskDialog()
   const [form, setForm] = useState<InterestPolicyInput>({
     start_date: policy.start_date,
     end_date: policy.end_date,
@@ -729,6 +736,22 @@ function PolicyEditModal({
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [partnerLabels, setPartnerLabels] = useState<Map<string, string>>(new Map())
+
+  useEffect(() => {
+    let cancelled = false
+    void window.api.partners.list({}).then((res) => {
+      if (cancelled || !res.success || !res.data) return
+      const map = new Map<string, string>()
+      for (const p of res.data) {
+        map.set(String(p.id), `${p.partner_no} — ${p.full_name?.trim() || '—'}`)
+      }
+      setPartnerLabels(map)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const handleSave = async (): Promise<void> => {
     if (!form.start_date || !form.end_date || !form.decision_date) {
@@ -749,6 +772,39 @@ function PolicyEditModal({
     ) {
       setError('Seçili üyeler kapsamı için en az bir üye seçmelisiniz.')
       return
+    }
+
+    const previousScope = policy.scope_type ?? 'ALL_ACTIVE'
+    const previousIds = new Set(
+      previousScope === 'SELECTED_MEMBERS'
+        ? (policy.member_ids ?? []).map((id) => String(id))
+        : []
+    )
+    const nextIds = new Set(
+      form.scope_type === 'SELECTED_MEMBERS'
+        ? (form.member_ids ?? []).map((id) => String(id))
+        : []
+    )
+    const removedIds =
+      previousScope === 'SELECTED_MEMBERS' && form.scope_type === 'SELECTED_MEMBERS'
+        ? [...previousIds].filter((id) => !nextIds.has(id))
+        : []
+
+    if (removedIds.length > 0) {
+      const lines = removedIds.map((id) => partnerLabels.get(id) ?? `Üye #${id}`)
+      const listed =
+        lines.length <= 12
+          ? lines.join('\n')
+          : `${lines.slice(0, 12).join('\n')}\n… ve ${lines.length - 12} üye daha`
+      const ok = await ask.confirm(
+        `Bu üyeler karardan çıkarılacak; bu karardan gelen faizleri kaldırılacak:\n\n${listed}\n\nBu üyelerin bu karardan gelen faizi kaldırılacak. Emin misiniz?`,
+        {
+          title: 'Kapsamdan üye çıkarma',
+          confirmLabel: 'Çıkar ve kaydet',
+          variant: 'danger'
+        }
+      )
+      if (!ok) return
     }
 
     setSaving(true)

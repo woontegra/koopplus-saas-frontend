@@ -812,7 +812,7 @@ export default function MemberDebtTableView({
                         title="Bu ay, ödenmemiş aidatlar için işleyen faiz"
                       >
                         İşleyen faiz{' '}
-                        <InfoTip text="Bu ay, ödenmemiş aidatlar için işleyen faiz" />
+                        <InfoTip text="Bu ay, ödenmemiş aidatlar için işleyen faiz. Aynı ayı birden fazla faiz kararı kapsıyorsa en yeni başlangıç tarihli kararın oranı bir kez uygulanır." />
                       </th>
                       <th
                         className="text-right money-principal"
