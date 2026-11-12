@@ -250,7 +250,9 @@ body {
   border: 1px solid var(--kat-border);
   border-radius: var(--kat-radius-md);
   background: #fff;
-  overflow: hidden;
+  /* Dikeyde içeriği kesme; geniş tablolar yatay kaydırılsın */
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 .table-wrap--scroll {

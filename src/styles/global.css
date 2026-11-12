@@ -699,13 +699,13 @@ a {
   gap: 8px;
 }
 
-.table-wrap--dashboard {
-  max-height: 320px;
-  overflow: auto;
-}
-
+/* Yönetim paneli tabloları: içerik kadar uzasın; dikey iç kaydırma yok.
+   Geniş tablolar yalnızca yatay kaydırılabilir (responsive overflow-x). */
+.table-wrap--dashboard,
 .table-wrap--dashboard-monthly {
-  max-height: 420px;
+  max-height: none;
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 .dashboard-table-action {
