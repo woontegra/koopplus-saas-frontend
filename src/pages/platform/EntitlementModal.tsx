@@ -8,7 +8,7 @@ import PlatformModal from '../../platform/PlatformModal'
 import {
   platformApi,
   platformErrorMessage,
-  type PlatformEntitlementSummary,
+  type PlatformUserEntitlementDetail,
   type PlatformTenantEntitlementOwner
 } from '../../platform/platformApi'
 import { useActionToast } from '../../hooks/useActionToast'
@@ -27,8 +27,8 @@ export function EntitlementBadge({
 }): JSX.Element {
   if (!entitlement || entitlement.total === 0) return <span className="platform-muted">—</span>
   return (
-    <span title={`Toplam ${entitlement.total}, kullanılan ${entitlement.used}, kalan ${entitlement.remaining}`}>
-      {entitlement.used} / {entitlement.total}
+    <span title={`Ek kooperatif hakkı: toplam ${entitlement.total}, kullanılan ${entitlement.used}, kalan ${entitlement.remaining}`}>
+      Ek: {entitlement.used} / {entitlement.total}
       <span className="platform-muted"> (kalan {entitlement.remaining})</span>
     </span>
   )
@@ -44,7 +44,7 @@ export default function EntitlementModal({
   onSaved?: () => void
 }): JSX.Element {
   const toast = useActionToast()
-  const [summary, setSummary] = useState<PlatformEntitlementSummary | null>(null)
+  const [summary, setSummary] = useState<PlatformUserEntitlementDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState<'add' | 'remove'>('add')
   const [count, setCount] = useState('1')
@@ -98,7 +98,7 @@ export default function EntitlementModal({
 
   return (
     <PlatformModal
-      title={`Kooperatif Hakkı — ${user.fullName || user.email}`}
+      title={`Kooperatifler ve Ek Hak — ${user.fullName || user.email}`}
       onClose={onClose}
       wide
       footer={
@@ -118,19 +118,55 @@ export default function EntitlementModal({
       ) : summary ? (
         <>
           <p style={{ marginTop: 0 }}>
-            <strong>{user.email}</strong> — Toplam: <strong>{summary.total}</strong> · Kullanılan:{' '}
-            <strong>{summary.used}</strong> · Kalan: <strong>{summary.remaining}</strong>
-            {summary.nextExpiresAt ? ` · En yakın bitiş: ${formatDate(summary.nextExpiresAt)}` : ''}
+            <strong>{user.email}</strong> — Açık kooperatif: <strong>{summary.openCooperativeCount}</strong> · Ek
+            kooperatif hakkı: <strong>{summary.total}</strong> (kullanılan {summary.used}, kalan{' '}
+            <strong>{summary.remaining}</strong>) · Toplam açabileceği:{' '}
+            <strong>{summary.openCooperativeCount + summary.remaining}</strong>
           </p>
-          {summary.grants.length > 0 && (
+
+          <h4 style={{ margin: '12px 0 6px' }}>Müşterinin kooperatifleri</h4>
+          {summary.cooperatives.length === 0 ? (
+            <p className="platform-muted">Kooperatif yok.</p>
+          ) : (
+            <div className="table-wrap table-wrap--compact" style={{ marginBottom: 12 }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Kooperatif</th>
+                    <th>Durum</th>
+                    <th>Bitiş</th>
+                    <th>Nasıl açıldı</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {summary.cooperatives.map((c) => (
+                    <tr key={c.id}>
+                      <td>{c.name}</td>
+                      <td>
+                        {c.status === 'ARCHIVED' ? 'Arşiv' : c.status === 'SUSPENDED' ? 'Askıda' : 'Aktif'}
+                        {c.isDemo ? ' · Demo' : ''}
+                      </td>
+                      <td>{c.expiresAt ? formatDate(c.expiresAt) : 'Süresiz'}</td>
+                      <td>{c.fromEntitlement ? 'Ek kooperatif hakkından' : 'Satın alma / panel'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <h4 style={{ margin: '12px 0 6px' }}>Ek kooperatif hakları</h4>
+          {summary.grants.length === 0 ? (
+            <p className="platform-muted">Ek kooperatif hakkı yok.</p>
+          ) : (
             <div className="table-wrap table-wrap--compact" style={{ marginBottom: 12 }}>
               <table className="data-table">
                 <thead>
                   <tr>
                     <th>Kaynak</th>
-                    <th className="text-right">Toplam</th>
+                    <th className="text-right">Ek adet</th>
                     <th className="text-right">Kullanılan</th>
-                    <th>Bitiş</th>
+                    <th>Bu haktan açılacak kooperatifin bitişi</th>
                     <th>Not</th>
                   </tr>
                 </thead>
@@ -151,6 +187,10 @@ export default function EntitlementModal({
               </table>
             </div>
           )}
+          <p className="platform-muted" style={{ marginTop: 0 }}>
+            Ek kooperatif hakkı, müşterinin mevcut kooperatiflerine <strong>ek olarak</strong> kendi açabileceği
+            kooperatif sayısıdır. Hak vermek mevcut kooperatiflerin bitiş tarihini değiştirmez.
+          </p>
         </>
       ) : null}
 
@@ -172,12 +212,12 @@ export default function EntitlementModal({
       </div>
       <div className="form-grid">
         <div className="form-group">
-          <label>Adet</label>
+          <label>Ek kooperatif adedi</label>
           <input type="number" min={1} max={100} value={count} onChange={(e) => setCount(e.target.value)} />
         </div>
         {mode === 'add' && (
           <div className="form-group">
-            <label>Geçerlilik bitişi (boşsa 1 yıl)</label>
+            <label>Bu haktan açılacak kooperatifin bitişi (boşsa 1 yıl)</label>
             <input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
           </div>
         )}
@@ -233,7 +273,7 @@ export function TenantEntitlementPanel({ tenantId }: { tenantId: string }): JSX.
             <thead>
               <tr>
                 <th>Yönetici</th>
-                <th>Hak (kullanılan / toplam)</th>
+                <th>Ek kooperatif hakkı (kullanılan / toplam)</th>
                 <th>En yakın bitiş</th>
                 <th>İşlem</th>
               </tr>

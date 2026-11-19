@@ -252,6 +252,22 @@ export type PlatformEntitlementGrant = {
 
 export type PlatformEntitlementSummary = PlatformEntitlementBrief & { grants: PlatformEntitlementGrant[] }
 
+export type PlatformUserCooperative = {
+  id: string
+  name: string
+  status: string
+  role: string
+  isDemo: boolean
+  expiresAt: string | null
+  fromEntitlement: boolean
+}
+
+/** Kullanıcının kooperatifleri + ek kooperatif hakkı (platform penceresi). */
+export type PlatformUserEntitlementDetail = PlatformEntitlementSummary & {
+  cooperatives: PlatformUserCooperative[]
+  openCooperativeCount: number
+}
+
 export type PlatformTenantEntitlementOwner = {
   userId: string
   email: string
@@ -564,10 +580,10 @@ export const platformApi = {
 
   // ---- Kooperatif hakkı ----
   getUserEntitlements: (userId: string) =>
-    req<PlatformEntitlementSummary>(`/api/platform/users/${tid(userId)}/entitlements`, 'GET'),
+    req<PlatformUserEntitlementDetail>(`/api/platform/users/${tid(userId)}/entitlements`, 'GET'),
 
   adjustUserEntitlements: (userId: string, body: { delta: number; reason: string; expiresAt?: string }) =>
-    req<PlatformEntitlementSummary>(`/api/platform/users/${tid(userId)}/entitlements/adjust`, 'POST', body),
+    req<PlatformUserEntitlementDetail>(`/api/platform/users/${tid(userId)}/entitlements/adjust`, 'POST', body),
 
   getTenantEntitlements: (tenantId: string) =>
     req<PlatformTenantEntitlementOwner[]>(`/api/platform/tenants/${tid(tenantId)}/entitlements`, 'GET'),

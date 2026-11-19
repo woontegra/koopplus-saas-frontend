@@ -101,7 +101,7 @@ export default function PlatformUsersPage(): JSX.Element {
                   <tr>
                     <th>Kullanıcı</th>
                     <th>Kooperatifler</th>
-                    <th>Kooperatif Hakkı</th>
+                    <th>Ek Kooperatif Hakkı</th>
                     <th>Durum</th>
                     <th>Son Giriş</th>
                     <th>Son Görülme</th>
