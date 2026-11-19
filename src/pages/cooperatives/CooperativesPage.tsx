@@ -12,9 +12,9 @@ import { platformApi, platformErrorMessage } from '../../platform/platformApi'
 import { formatDate, formatDateTime } from '../../utils/format'
 import { desktopAuthRequest } from '../../desktopApi/apiResult'
 import CityDistrictFields from '../../components/ui/CityDistrictFields'
-
-/** Web sitesindeki KoopPlus satın alma sayfası (ek kooperatif lisansı). */
-export const KOOPPLUS_PURCHASE_URL = 'https://www.woontegra.com/yazilimlar/kooperatif-yonetim-yazilimi'
+import { ContactLinks } from '../../components/contact/ContactLinks'
+import { fetchPlatformContact } from '../../api/contact'
+import type { PlatformContact } from '../../api/types'
 
 interface EntitlementSummary {
   total: number
@@ -48,6 +48,21 @@ export default function CooperativesPage(): JSX.Element {
   const [newCity, setNewCity] = useState('')
   const [newDistrict, setNewDistrict] = useState('')
   const [creating, setCreating] = useState(false)
+
+  const [contact, setContact] = useState<PlatformContact | null>(null)
+
+  useEffect(() => {
+    if (isPlatformAdmin) return
+    let alive = true
+    fetchPlatformContact()
+      .then((c) => {
+        if (alive) setContact(c)
+      })
+      .catch(() => undefined)
+    return () => {
+      alive = false
+    }
+  }, [isPlatformAdmin])
 
   const loadEntitlement = useCallback(async (): Promise<void> => {
     const res = await desktopAuthRequest<EntitlementSummary>('/api/cooperatives/entitlement')
@@ -225,10 +240,13 @@ export default function CooperativesPage(): JSX.Element {
             ) : null}
             {remaining === 0 && (
               <span>
-                {entitlement.total > 0 ? ' ' : ''}Yeni kooperatif eklemek için ek lisans gerekir.{' '}
-                <a href={KOOPPLUS_PURCHASE_URL} target="_blank" rel="noopener noreferrer">
-                  Ek lisans satın al
-                </a>
+                {entitlement.total > 0 ? ' ' : ''}Yeni kooperatif eklemek için ek lisans gerekir. Ek kooperatif
+                lisansı için bizimle iletişime geçin:{' '}
+                {contact && (contact.phone || contact.email || contact.whatsapp) ? (
+                  <ContactLinks contact={contact} />
+                ) : (
+                  <span>platform yöneticiniz</span>
+                )}
               </span>
             )}
           </div>
