@@ -17,6 +17,7 @@ import {
 import { formatDate, formatDateTime } from '../../utils/format'
 import { BackupModal, DeleteTenantModal, ExtendModal, RestoreModal, StatusModal } from './TenantModals'
 import TenantUsersPanel from './TenantUsersPanel'
+import { TenantEntitlementPanel } from './EntitlementModal'
 import {
   Badge,
   DaysLeftBadge,
@@ -659,6 +660,7 @@ export default function PlatformTenantDetailPage(): JSX.Element {
       />
 
       {tab === 'general' && <GeneralTab key={`${tenant.id}-${tenant.updatedAt}`} tenant={tenant} onSaved={() => void load()} />}
+      {tab === 'general' && <TenantEntitlementPanel tenantId={tenant.id} />}
       {tab === 'users' && <TenantUsersPanel tenantId={tenant.id} tenantName={tenant.name} />}
       {tab === 'extensions' && <ExtensionsTab tenantId={tenant.id} reloadKey={reloadKey} />}
       {tab === 'logins' && <LoginsTab tenantId={tenant.id} />}

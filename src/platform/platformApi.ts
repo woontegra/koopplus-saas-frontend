@@ -226,6 +226,37 @@ export type PlatformGlobalUser = {
   lastSeenAt: string | null
   loginCount: number
   memberships: PlatformMembershipRef[]
+  /** Kooperatif hakkı özeti (adetli satış). */
+  entitlement?: PlatformEntitlementBrief | null
+}
+
+export type PlatformEntitlementBrief = {
+  total: number
+  used: number
+  remaining: number
+  nextExpiresAt: string | null
+}
+
+export type PlatformEntitlementGrant = {
+  id: string
+  totalSlots: number
+  usedSlots: number
+  remainingSlots: number
+  expiresAt: string
+  active: boolean
+  sourceKind: string
+  sourceRef: string | null
+  note: string | null
+  createdAt: string
+}
+
+export type PlatformEntitlementSummary = PlatformEntitlementBrief & { grants: PlatformEntitlementGrant[] }
+
+export type PlatformTenantEntitlementOwner = {
+  userId: string
+  email: string
+  fullName: string
+  entitlement?: PlatformEntitlementSummary
 }
 
 export type PlatformOnlineUser = {
@@ -530,6 +561,16 @@ export const platformApi = {
     ),
 
   listOnline: () => req<PlatformOnlineUser[]>('/api/platform/online', 'GET'),
+
+  // ---- Kooperatif hakkı ----
+  getUserEntitlements: (userId: string) =>
+    req<PlatformEntitlementSummary>(`/api/platform/users/${tid(userId)}/entitlements`, 'GET'),
+
+  adjustUserEntitlements: (userId: string, body: { delta: number; reason: string; expiresAt?: string }) =>
+    req<PlatformEntitlementSummary>(`/api/platform/users/${tid(userId)}/entitlements/adjust`, 'POST', body),
+
+  getTenantEntitlements: (tenantId: string) =>
+    req<PlatformTenantEntitlementOwner[]>(`/api/platform/tenants/${tid(tenantId)}/entitlements`, 'GET'),
 
   revokeSessions: (userId: string) =>
     req<{ userId: string; tokenVersion: number }>(

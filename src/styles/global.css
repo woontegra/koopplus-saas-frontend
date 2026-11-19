@@ -7482,6 +7482,26 @@ td.nowrap {
   }
 }
 
-
-
-
+/* Kooperatif hakkı bilgisi ve haktan yeni kooperatif formu */
+.coop-entitlement-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.coop-entitlement-info a {
+  font-weight: 600;
+  text-decoration: underline;
+}
+.coop-create-form {
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 14px;
+  background: var(--surface, #fff);
+}
+.coop-create-form__hint {
+  margin: 8px 0 10px;
+  font-size: 13px;
+  color: var(--text-muted, #64748b);
+}

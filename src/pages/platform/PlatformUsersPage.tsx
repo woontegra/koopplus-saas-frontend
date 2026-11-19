@@ -12,6 +12,7 @@ import {
 } from '../../platform/platformApi'
 import { formatDateTime } from '../../utils/format'
 import { Badge, PageHeader, Pagination, RoleBadge } from './platformUi'
+import EntitlementModal, { EntitlementBadge } from './EntitlementModal'
 
 const PAGE_SIZE = 50
 
@@ -41,6 +42,7 @@ export default function PlatformUsersPage(): JSX.Element {
   const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
   const revoke = useRevokeSessions(() => void load())
+  const [entitlementUser, setEntitlementUser] = useState<PlatformGlobalUser | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -99,6 +101,7 @@ export default function PlatformUsersPage(): JSX.Element {
                   <tr>
                     <th>Kullanıcı</th>
                     <th>Kooperatifler</th>
+                    <th>Kooperatif Hakkı</th>
                     <th>Durum</th>
                     <th>Son Giriş</th>
                     <th>Son Görülme</th>
@@ -127,12 +130,18 @@ export default function PlatformUsersPage(): JSX.Element {
                         </div>
                       </td>
                       <td>
+                        <EntitlementBadge entitlement={u.entitlement} />
+                      </td>
+                      <td>
                         <Badge tone={u.isActive ? 'green' : 'gray'}>{u.isActive ? 'Aktif' : 'Pasif'}</Badge>
                       </td>
                       <td>{formatDateTime(u.lastLoginAt)}</td>
                       <td>{formatDateTime(u.lastSeenAt)}</td>
                       <td className="text-right">{u.loginCount}</td>
                       <td>
+                        <button type="button" className="btn btn-sm" onClick={() => setEntitlementUser(u)}>
+                          Kooperatif Hakkı
+                        </button>{' '}
                         <button type="button" className="btn btn-sm" onClick={() => void revoke(u)}>
                           Oturumları Kapat
                         </button>
@@ -146,6 +155,13 @@ export default function PlatformUsersPage(): JSX.Element {
           </>
         )}
       </DataPanel>
+      {entitlementUser && (
+        <EntitlementModal
+          user={entitlementUser}
+          onClose={() => setEntitlementUser(null)}
+          onSaved={() => void load()}
+        />
+      )}
     </div>
   )
 }
